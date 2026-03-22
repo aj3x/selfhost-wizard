@@ -38,6 +38,7 @@ music_storage = music_library_size_gb  (if manually entered)
 
 | Quality Tier | Movie (avg) | TV Episode (avg) | Notes |
 |-------------|-------------|-------------------|-------|
+| 720p | 2 GB | 0.7 GB | Compressed, good for small screens |
 | 1080p | 6 GB | 2 GB | Compressed x264/x265 |
 | 4K SDR | 30 GB | 8 GB | Good quality encode |
 | 4K HDR/DV | 60 GB | 12 GB | High bitrate / remux |
@@ -120,7 +121,7 @@ total_raw_capacity_needed = raw_storage / raid_overhead[selected_raid]
 
 Project storage needs at 1, 3, and 5 years. Assume:
 - Media growth: 20-50% of initial library size per year (user-adjustable)
-- Photo/video growth: annual rate from Q4.2
+- Photo/video growth: annual rate from Q5.2
 - File growth: 10% per year (default)
 
 Show a chart of projected storage use vs capacity to help users size appropriately.
@@ -129,12 +130,31 @@ Show a chart of projected storage use vs capacity to help users size appropriate
 
 ## 3. Hardware Cost Estimation
 
+### 3.0 Bring Your Own Hardware (BYOD)
+
+Users may already own hardware they plan to use. The cost model should allow them to zero out or reduce any line item.
+
+**BYOD inputs:**
+
+| Item | Input | Effect on Cost |
+|------|-------|---------------|
+| "I'm using a machine I already own" | Toggle + optional wattage override | Device cost = $0, use actual wattage for electricity |
+| "I already have drives" | Per-drive: size (TB), age (years), type (HDD/SSD) | Those drives cost $0 in upfront, but still count for failure risk based on age |
+| "I already have SSDs" | Per-SSD: size (GB), type (SATA/NVMe) | SSD cost = $0 |
+| "I already have a UPS" | Toggle | UPS cost = $0 |
+| "I already have networking gear" | Toggle | Networking accessories = $0 |
+
+When BYOD is active, the cost model still shows what the equivalent new hardware would cost (for context) but uses $0 for the user's actual cost. The break-even calculation uses the user's actual spend.
+
+For existing drives, factor age into the failure risk model — a 4-year-old drive has a higher AFR than a new one. Show this in the risk section.
+
 ### 3.1 Server/NAS Device Cost
 
 Based on skill level and needs, recommend tiers:
 
 | Tier | Example | Approx. Cost | For Whom |
 |------|---------|-------------|----------|
+| BYOD (own machine) | User's existing PC/laptop | $0 | Anyone with spare hardware |
 | Pre-built NAS (basic) | Synology DS224+, Ugreen DXP2800 | $300-400 | Beginners, low stream count |
 | Pre-built NAS (mid) | Synology DS923+, Ugreen DXP4800 | $500-700 | Intermediate, 4 bays, some transcoding |
 | Mini PC (value) | Intel N100 mini PC | $150-250 | Good enough for most users, add external storage |
@@ -142,12 +162,14 @@ Based on skill level and needs, recommend tiers:
 | Full build (mid) | Used Dell Optiplex/HP ProDesk + HBA | $200-400 | Advanced, existing hardware path |
 | Full build (high) | Custom build with case, PSU, HBA | $500-1000+ | Power users, many drives |
 
-### 3.2 Hard Drive Cost
+### 3.2 Storage Cost (HDDs and SSDs)
+
+The user can choose HDD, SSD, or a mix for their storage. Present both options with tradeoffs.
 
 ```
 drive_cost = ceil(total_raw_capacity_needed / drive_size) × price_per_drive
 
-# Current approximate pricing (HDD):
+# Current approximate HDD pricing:
 # 4 TB:  ~$70  ($17.50/TB)
 # 8 TB:  ~$120 ($15.00/TB)
 # 12 TB: ~$180 ($15.00/TB)
@@ -155,11 +177,33 @@ drive_cost = ceil(total_raw_capacity_needed / drive_size) × price_per_drive
 # 18 TB: ~$270 ($15.00/TB)
 # 20 TB: ~$330 ($16.50/TB)
 
-# SSD pricing (for OS/cache/fast storage):
+# Current approximate SSD pricing (SATA):
+# 1 TB:  ~$70   ($70/TB)
+# 2 TB:  ~$120  ($60/TB)
+# 4 TB:  ~$220  ($55/TB)
+# 8 TB:  ~$500  ($62.50/TB)
+
+# NVMe SSD pricing (for OS/cache/fast storage):
 # 500 GB NVMe: ~$45
 # 1 TB NVMe:   ~$70
 # 2 TB NVMe:   ~$130
+# 4 TB NVMe:   ~$280
 ```
+
+**SSD vs HDD guidance (show to user):**
+
+| Factor | HDD | SSD |
+|--------|-----|-----|
+| Cost per TB | $14-18 | $55-70 |
+| Power consumption | 5-8W per drive | 0.5-3W per drive |
+| Noise | Audible (spinning, seeking) | Silent |
+| Speed | ~150 MB/s sequential | ~500+ MB/s |
+| Best for | Bulk media storage, large archives | OS, databases, working storage, small quiet builds |
+| Failure mode | Gradual (often gives warnings) | Sudden (less warning) |
+
+**Mixed configuration support:** Allow users to specify "SSDs for OS + apps, HDDs for bulk storage" — this is the most common and cost-effective approach. The cost model should handle separate drive pools.
+
+For BYOD drives: user marks each existing drive with size and type. The model calculates remaining capacity needed and prices only the new drives.
 
 Recommend drive sizes that minimize cost while meeting capacity. Prefer fewer larger drives (simpler, fewer failure points) unless RAID requires a minimum count.
 
@@ -189,8 +233,27 @@ Present as a range (low/high estimate).
 ### 4.1 Electricity Cost
 
 ```
-monthly_electricity = device_wattage × 24 × 30.44 / 1000 × electricity_rate_per_kwh
+monthly_electricity = device_wattage × hours_per_day × days_per_month / 1000 × electricity_rate_per_kwh
 ```
+
+**Uptime schedule options:**
+
+| Schedule | hours_per_day | days_per_month | Use Case |
+|----------|--------------|----------------|----------|
+| 24/7 (always on) | 24 | 30.44 | NAS, always-available services |
+| Daytime only (16 hrs) | 16 | 30.44 | Server sleeps overnight |
+| Evenings & weekends | 8 | 30.44 | Game server, occasional use |
+| Weekends only | 24 | 8.7 | Hobby server |
+| On-demand (manual power) | Custom | Custom | User manually powers on/off |
+
+The user selects a schedule or enters custom hours. Default is 24/7 for NAS/media servers, but the option to reduce matters significantly for cost:
+
+**Example impact (N100 mini PC + 2 HDDs, ~22W avg, $0.16/kWh):**
+- 24/7: ~$2.54/month
+- 16 hrs/day: ~$1.69/month
+- 8 hrs/day: ~$0.85/month
+
+For non-24/7 schedules, show a note: "Services like Immich auto-upload and media automation won't work while the server is off. Consider which services you need available at all times vs on-demand."
 
 **Estimated wattage by device type:**
 
@@ -366,3 +429,80 @@ The results page should also address qualitative factors:
 **Family utility:** Shared photo libraries, family media server, centralized backup — practical value beyond cost.
 
 These should be presented alongside the numbers so users who are close to break-even can factor in what matters to them.
+
+---
+
+## 9. Configurable Defaults
+
+All percentage-based assumptions and default values used in calculations should live in a single, centralized configuration. This config is:
+- **Visible to the user** as a "Calculation Settings" or "Assumptions" page/panel
+- **Pre-filled with sensible defaults** (the values below)
+- **User-adjustable** — advanced users can tweak any value to match their situation
+- **Resettable** — a "Reset to defaults" button restores all values
+
+This prevents magic numbers scattered across the codebase and gives users transparency into how their results are calculated.
+
+### Default Values
+
+**Storage Estimation Defaults:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `avg_episodes_per_season` | 10 | Used when estimating TV storage from season count |
+| `media_growth_rate_annual` | 0.30 | 30% of initial library size added per year |
+| `photo_growth_rate_annual` | (from devices) | Calculated from device inputs, but user can override |
+| `file_growth_rate_annual` | 0.10 | 10% growth in file backup data per year |
+| `growth_projection_years` | 3 | How many years ahead to project storage needs |
+| `storage_headroom_multiplier` | 1.15 | 15% headroom — don't fill drives to 100% |
+
+**Drive Failure Defaults:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `hdd_afr` | 0.02 | 2% annualized failure rate for consumer HDDs |
+| `ssd_afr` | 0.005 | 0.5% annualized failure rate for SSDs |
+| `nas_drive_afr` | 0.015 | 1.5% AFR for NAS-rated drives (IronWolf, Red Pro) |
+| `consumer_warranty_years` | 3 | Standard consumer drive warranty |
+| `nas_warranty_years` | 5 | NAS-rated drive warranty |
+| `drive_lifespan_years` | 6 | Expected useful life for TCO amortization |
+
+**Versioning Multipliers:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `versioning_multiplier_none` | 1.0 | Sync only, no versions |
+| `versioning_multiplier_basic` | 1.3 | 30 days of versions |
+| `versioning_multiplier_aggressive` | 1.5 | 90 days of versions |
+
+**Electricity Defaults:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `default_uptime_hours` | 24 | Hours per day the server runs |
+| `default_uptime_days_per_month` | 30.44 | Average days per month |
+| `days_per_year` | 365.25 | For annual calculations |
+
+**Cost Defaults:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `offsite_cost_per_tb_month` | 5.00 | Backblaze B2 rate |
+| `domain_annual_cost` | 12.00 | Typical .com domain |
+| `vpn_monthly_default` | 5.46 | Mullvad pricing |
+| `plex_pass_monthly` | 5.00 | Plex Pass (if recommending Plex) |
+
+**Break-Even Defaults:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `tco_projection_years` | 5 | How many years for TCO comparison |
+| `saas_price_inflation_annual` | 0.05 | 5% annual increase in SaaS prices (optional, off by default) |
+
+### UI Implementation
+
+- Show as a collapsible "Assumptions & Defaults" section on the results page
+- Each value has: label, current value (editable), default value, and a brief explanation
+- "Reset all to defaults" button at the top
+- Changes immediately recalculate all results in real-time
+- Persist custom values in localStorage alongside assessment data
+- Include in export/import so shared configs keep custom assumptions

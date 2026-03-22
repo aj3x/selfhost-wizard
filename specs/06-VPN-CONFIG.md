@@ -235,7 +235,7 @@ In the configurator, present providers in this order:
 4. **NordVPN** — "Popular choice with large server network. From $3.69/month."
 5. **IPVanish** — "Simple setup, unlimited devices. From $3.33/month."
 6. **Other / Custom** — "Use any OpenVPN or WireGuard provider. [How to set this up →]"
-7. **I already have a VPN** — pre-fill from assessment Q2.5
+7. **I already have a VPN** — pre-fill from assessment Q3.5
 
 Link to Gluetun's supported providers list for users who want to check compatibility before choosing.
 

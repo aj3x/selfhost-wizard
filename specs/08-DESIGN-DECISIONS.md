@@ -55,8 +55,21 @@ The wizard should feel like progress. Each screen completion gives a visual indi
 /configure                  → Phase 2: Service Configurator
 /configure/review           → Phase 2: Review & Download
 /setup                      → Phase 3: Guided Setup (future)
+/tools                      → Standalone tools index
+/tools/subscription-calc    → Subscription cost calculator (standalone)
+/tools/storage-estimator    → Storage needs estimator (standalone)
+/tools/electricity-calc     → Electricity cost calculator (standalone)
+/tools/break-even           → Break-even calculator (standalone)
+/tools/drive-risk           → Drive failure risk calculator (standalone)
+/tools/photo-size           → Photo library size estimator (standalone)
 /about                      → About the project, contribute, etc.
 ```
+
+Each `/tools/*` route renders the same component used inside the wizard, but with its own input form instead of drawing from the shared assessment store. This means:
+- Tools are independently linkable and shareable
+- Tools can accept URL parameters for pre-filling (e.g., `/tools/electricity-calc?watts=22&rate=0.16`)
+- Inside the wizard, the same component receives data from the store and emits results back to it
+- A tool used standalone shows a CTA: "Want a full assessment? → Start the wizard"
 
 ### Navigation
 
@@ -86,8 +99,17 @@ src/lib/components/
 │   ├── NumberInput.svelte        # Numeric input with increment/decrement
 │   ├── CurrencyInput.svelte      # Currency-aware numeric input
 │   ├── DeviceList.svelte         # Repeatable device entry (add/remove)
+│   ├── RepeatableEntry.svelte    # Generic add/remove row list (used for Q3.6 "Other" entries)
 │   ├── Tooltip.svelte            # Contextual help
 │   └── ConditionalSection.svelte # Show/hide based on condition (animated)
+├── tools/                         # STANDALONE CALCULATORS (used both in wizard and at /tools/*)
+│   ├── SubscriptionCalc.svelte   # Subscription cost tracker — totals monthly SaaS spend
+│   ├── StorageEstimator.svelte   # Storage needs calculator — media + photos + files → TB
+│   ├── ElectricityCalc.svelte    # Electricity cost — wattage × uptime × rate
+│   ├── BreakEvenCalc.svelte      # Break-even timeline — upfront vs monthly savings
+│   ├── DriveRiskCalc.svelte      # Drive failure probability — drives × AFR × years
+│   ├── PhotoSizeEstimator.svelte # Photo library sizing — devices × years × usage
+│   └── ToolWrapper.svelte        # Shared wrapper: standalone mode (own inputs) vs embedded mode (store-connected)
 ├── results/
 │   ├── CostComparison.svelte     # Side-by-side cost breakdown
 │   ├── BreakEvenChart.svelte     # Visual break-even timeline
@@ -103,12 +125,46 @@ src/lib/components/
 │   ├── ComposePreview.svelte     # Live preview of docker-compose.yml
 │   ├── EnvEditor.svelte          # Environment variable editor
 │   └── PortTable.svelte          # Port allocation overview
+├── config/
+│   ├── DefaultsPanel.svelte      # Configurable defaults/assumptions editor
+│   └── DefaultsResetButton.svelte # Reset all to defaults
 └── shared/
     ├── RunningTotal.svelte        # Floating/sticky cost total
     ├── ProgressBar.svelte         # Wizard progress indicator
     ├── Badge.svelte               # Skill level badge
     ├── Alert.svelte               # Warning/info messages
     └── CodeBlock.svelte           # Syntax-highlighted code display
+```
+
+### Standalone Tool Architecture
+
+Each tool component accepts two modes via a `mode` prop:
+
+```typescript
+// ToolWrapper.svelte pattern
+interface ToolProps {
+  mode: 'standalone' | 'embedded';
+  // In standalone mode: tool manages its own inputs
+  // In embedded mode: tool reads from / writes to the assessment store
+  initialValues?: Partial<ToolInputs>;  // for URL params in standalone mode
+}
+```
+
+When embedded in the wizard, the tool's inputs are pre-filled from the store and its outputs flow back. When standalone, it renders its own input form and shows results immediately.
+
+Each standalone tool page (`/tools/storage-estimator`) is a thin wrapper:
+
+```svelte
+<!-- src/routes/tools/storage-estimator/+page.svelte -->
+<script>
+  import StorageEstimator from '$lib/components/tools/StorageEstimator.svelte';
+  import { page } from '$app/stores';
+  
+  // Parse URL params for pre-filling
+  const initialValues = Object.fromEntries($page.url.searchParams);
+</script>
+
+<StorageEstimator mode="standalone" {initialValues} />
 ```
 
 ### State Management
@@ -133,36 +189,101 @@ export const totalMonthlySaaS = derived(assessment, ($a) => {
        + sumServices($a.musicServices)
        + sumServices($a.cloudStorage)
        + sumServices($a.photoBackup)
-       + ($a.vpnService?.cost ?? 0);
+       + ($a.vpnService?.cost ?? 0)
+       + sumServices($a.otherServices);  // Q3.6 now includes costs
 });
 
-export const estimatedStorage = derived(assessment, ($a) => {
-  return calculateStorage($a);
-});
+export const estimatedStorage = derived(
+  [assessment, defaults],
+  ([$a, $d]) => {
+    return calculateStorage($a, $d);  // pass defaults for growth rates, multipliers, etc.
+  }
+);
 
 export const recommendation = derived(
-  [assessment, totalMonthlySaaS, estimatedStorage],
-  ([$a, $saas, $storage]) => {
-    return generateRecommendation($a, $saas, $storage);
+  [assessment, totalMonthlySaaS, estimatedStorage, defaults],
+  ([$a, $saas, $storage, $d]) => {
+    return generateRecommendation($a, $saas, $storage, $d);
   }
 );
 ```
+
+**Configurable defaults store:**
+
+```typescript
+// src/lib/stores/defaults.ts
+import { writable } from 'svelte/store';
+import type { CalculationDefaults } from '$lib/types';
+
+// These are the "factory defaults" — never mutated
+export const FACTORY_DEFAULTS: CalculationDefaults = {
+  // Storage estimation
+  avgEpisodesPerSeason: 10,
+  mediaGrowthRateAnnual: 0.30,
+  fileGrowthRateAnnual: 0.10,
+  growthProjectionYears: 3,
+  storageHeadroomMultiplier: 1.15,
+  
+  // Drive failure
+  hddAfr: 0.02,
+  ssdAfr: 0.005,
+  nasDriveAfr: 0.015,
+  consumerWarrantyYears: 3,
+  nasWarrantyYears: 5,
+  driveLifespanYears: 6,
+  
+  // Versioning
+  versioningMultiplierNone: 1.0,
+  versioningMultiplierBasic: 1.3,
+  versioningMultiplierAggressive: 1.5,
+  
+  // Electricity
+  defaultUptimeHours: 24,
+  defaultUptimeDaysPerMonth: 30.44,
+  
+  // Costs
+  offsiteCostPerTbMonth: 5.00,
+  domainAnnualCost: 12.00,
+  vpnMonthlyDefault: 5.46,
+  plexPassMonthly: 5.00,
+  
+  // Break-even
+  tcoProjectionYears: 5,
+  saasPriceInflationAnnual: 0.00,  // off by default, user can enable
+};
+
+export const defaults = writable<CalculationDefaults>({ ...FACTORY_DEFAULTS });
+
+export function resetDefaults() {
+  defaults.set({ ...FACTORY_DEFAULTS });
+}
+```
+
+Every calculation function takes `defaults` as a parameter rather than using hardcoded values. This means changing a default in the panel instantly recalculates everything.
 
 **LocalStorage persistence:**
 
 ```typescript
 // src/lib/stores/persist.ts
 import { assessment } from './assessment';
+import { defaults, FACTORY_DEFAULTS } from './defaults';
 
 // Save on every change
 assessment.subscribe(value => {
   localStorage.setItem('selfhost-assessment', JSON.stringify(value));
 });
+defaults.subscribe(value => {
+  localStorage.setItem('selfhost-defaults', JSON.stringify(value));
+});
 
 // Restore on load
-const saved = localStorage.getItem('selfhost-assessment');
-if (saved) {
-  assessment.set(JSON.parse(saved));
+const savedAssessment = localStorage.getItem('selfhost-assessment');
+if (savedAssessment) {
+  assessment.set(JSON.parse(savedAssessment));
+}
+const savedDefaults = localStorage.getItem('selfhost-defaults');
+if (savedDefaults) {
+  defaults.set(JSON.parse(savedDefaults));
 }
 ```
 
@@ -174,6 +295,7 @@ export function exportState() {
     version: 1,
     assessment: get(assessment),
     configuration: get(configuration),
+    defaults: get(defaults),
     timestamp: Date.now(),
   });
 }
@@ -183,6 +305,7 @@ export function importState(json: string) {
   if (data.version === 1) {
     assessment.set(data.assessment);
     configuration.set(data.configuration);
+    if (data.defaults) defaults.set(data.defaults);
   }
 }
 ```
@@ -334,18 +457,34 @@ Target: Lighthouse score > 90 on all metrics.
 
 ```
 routes/
-├── +page.svelte           → Landing (tiny)
+├── +page.svelte                    → Landing (tiny)
 ├── assess/
-│   ├── +page.svelte       → Wizard (core bundle)
+│   ├── +page.svelte                → Wizard (core bundle)
 │   └── results/
-│       └── +page.svelte   → Results (includes chart library, lazy loaded)
+│       └── +page.svelte            → Results (includes chart library, lazy loaded)
 ├── configure/
-│   ├── +page.svelte       → Configurator (lazy loaded)
+│   ├── +page.svelte                → Configurator (lazy loaded)
 │   └── review/
-│       └── +page.svelte   → Review + compose generation (lazy loaded, includes YAML lib)
+│       └── +page.svelte            → Review + compose generation (lazy loaded, includes YAML lib)
+├── tools/
+│   ├── +page.svelte                → Tools index (tiny — just links)
+│   ├── subscription-calc/
+│   │   └── +page.svelte            → Standalone subscription calculator
+│   ├── storage-estimator/
+│   │   └── +page.svelte            → Standalone storage estimator
+│   ├── electricity-calc/
+│   │   └── +page.svelte            → Standalone electricity calculator
+│   ├── break-even/
+│   │   └── +page.svelte            → Standalone break-even calculator
+│   ├── drive-risk/
+│   │   └── +page.svelte            → Standalone drive failure risk calculator
+│   └── photo-size/
+│       └── +page.svelte            → Standalone photo library estimator
 └── setup/
-    └── +page.svelte       → Guided setup (lazy loaded, future)
+    └── +page.svelte                → Guided setup (lazy loaded, future)
 ```
+
+Each `/tools/*` page is a thin wrapper around the corresponding `$lib/components/tools/*.svelte` component in standalone mode. The tool components themselves are shared with the wizard — they're part of the core bundle but each standalone page only imports the one it needs.
 
 ---
 
@@ -373,11 +512,11 @@ interface AssessmentState {
   cloudStorage: StorageServiceCost[];
   photoBackup: ServiceCost[];
   vpnService: ServiceCost | null;
-  otherServices: string[];
+  otherServices: OtherServiceCost[];  // Q3.6 — now with optional costs
   
   // Screen 3
   mediaAcquisition: 'physical' | 'digital' | 'existing' | 'other' | null;
-  videoQuality: '1080p' | '4k' | '4k_hdr' | null;
+  videoQuality: '720p' | '1080p' | '4k' | '4k_hdr' | null;  // added 720p
   librarySize: { movies: number; tvSeasons: number };
   concurrentStreams: number;
   needsTranscoding: boolean | null;
@@ -389,7 +528,7 @@ interface AssessmentState {
   // Screen 4
   wantsPhotoBackup: boolean;
   photoDevices: PhotoDevice[];
-  existingPhotoLibrary: number; // GB
+  existingPhotoLibrary: number; // GB — always shown prominently
   wantsMLFeatures: boolean;
   
   // Screen 5
@@ -417,12 +556,27 @@ interface AssessmentState {
   maintenanceTimeBudget: 'minimal' | 'some' | 'regular' | null;
   breakTolerance: 'low' | 'medium' | 'high' | null;
   hasHelp: 'yes' | 'no' | 'ai' | null;
+  
+  // BYOD (Bring Your Own)
+  byod: BYODConfig;
+  
+  // Uptime schedule
+  uptimeSchedule: UptimeSchedule;
 }
 
 interface ServiceCost {
   id: string;
   name: string;
   cost: number; // monthly
+  selected: boolean;
+}
+
+// Q3.6 — "Other" services with optional cost and custom name
+interface OtherServiceCost {
+  id: string;
+  name: string;          // user-entered service name
+  cost: number;          // monthly cost ($0 if free/unknown)
+  category?: string;     // optional categorization
   selected: boolean;
 }
 
@@ -436,6 +590,74 @@ interface PhotoDevice {
 interface ComputerBackup {
   id: string;
   sizeGB: number;
+}
+
+// BYOD — user's existing hardware
+interface BYODConfig {
+  usingOwnMachine: boolean;
+  machineWattage?: number;           // override wattage if known
+  existingDrives: ExistingDrive[];
+  existingSSDs: ExistingSSD[];
+  hasUPS: boolean;
+  hasNetworkingGear: boolean;
+}
+
+interface ExistingDrive {
+  id: string;
+  sizeGB: number;
+  type: 'hdd' | 'ssd';
+  ageYears: number;         // for failure risk calculation
+  isNASRated: boolean;      // affects warranty and AFR
+}
+
+interface ExistingSSD {
+  id: string;
+  sizeGB: number;
+  type: 'sata' | 'nvme';
+}
+
+// Uptime schedule
+interface UptimeSchedule {
+  preset: '24_7' | 'daytime' | 'evenings_weekends' | 'weekends' | 'on_demand' | 'custom';
+  customHoursPerDay?: number;
+  customDaysPerMonth?: number;
+}
+
+// Configurable defaults (see 02-COST-MODEL.md Section 9)
+interface CalculationDefaults {
+  // Storage estimation
+  avgEpisodesPerSeason: number;
+  mediaGrowthRateAnnual: number;
+  fileGrowthRateAnnual: number;
+  growthProjectionYears: number;
+  storageHeadroomMultiplier: number;
+  
+  // Drive failure
+  hddAfr: number;
+  ssdAfr: number;
+  nasDriveAfr: number;
+  consumerWarrantyYears: number;
+  nasWarrantyYears: number;
+  driveLifespanYears: number;
+  
+  // Versioning
+  versioningMultiplierNone: number;
+  versioningMultiplierBasic: number;
+  versioningMultiplierAggressive: number;
+  
+  // Electricity
+  defaultUptimeHours: number;
+  defaultUptimeDaysPerMonth: number;
+  
+  // Costs
+  offsiteCostPerTbMonth: number;
+  domainAnnualCost: number;
+  vpnMonthlyDefault: number;
+  plexPassMonthly: number;
+  
+  // Break-even
+  tcoProjectionYears: number;
+  saasPriceInflationAnnual: number;
 }
 
 // Configuration data (Phase 2)
@@ -458,6 +680,7 @@ interface CostAnalysis {
   upfrontHardware: { low: number; high: number };
   upfrontDrives: { low: number; high: number };
   upfrontAccessories: number;
+  byodSavings: number;             // how much BYOD reduces upfront cost
   breakEvenMonths: number;
   riskAdjustedBreakEven: number;
   fiveYearTCO: number;
