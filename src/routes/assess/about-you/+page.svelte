@@ -102,12 +102,12 @@
 >
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label class="mb-1 block text-sm text-(--color-text-muted)">Download</label>
-			<NumberInput bind:value={$assessment.downloadSpeed} min={1} max={10000} suffix="Mbps" />
+			<label for="downloadSpeed" class="mb-1 block text-sm text-(--color-text-muted)">Download</label>
+			<NumberInput id="downloadSpeed" bind:value={$assessment.downloadSpeed} min={1} max={10000} suffix="Mbps" />
 		</div>
 		<div>
-			<label class="mb-1 block text-sm text-(--color-text-muted)">Upload</label>
-			<NumberInput bind:value={$assessment.uploadSpeed} min={1} max={10000} suffix="Mbps" />
+			<label for="uploadSpeed" class="mb-1 block text-sm text-(--color-text-muted)">Upload</label>
+			<NumberInput id="uploadSpeed" bind:value={$assessment.uploadSpeed} min={1} max={10000} suffix="Mbps" />
 		</div>
 	</div>
 </QuestionGroup>

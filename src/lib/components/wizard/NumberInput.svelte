@@ -1,6 +1,7 @@
 <script lang="ts">
 	interface Props {
 		value: number;
+		id?: string;
 		min?: number;
 		max?: number;
 		step?: number;
@@ -8,7 +9,7 @@
 		onchange?: (value: number) => void;
 	}
 
-	let { value = $bindable(), min = 0, max = 99999, step = 1, suffix, onchange }: Props = $props();
+	let { value = $bindable(), id, min = 0, max = 99999, step = 1, suffix, onchange }: Props = $props();
 
 	function adjust(delta: number) {
 		const newVal = Math.min(max, Math.max(min, value + delta));
@@ -36,6 +37,7 @@
 		−
 	</button>
 	<input
+		id={id}
 		type="number"
 		{min}
 		{max}
