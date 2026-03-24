@@ -42,7 +42,13 @@
 		</div>
 	</div>
 
-	<div class="mt-12 text-sm text-(--color-text-muted)">
+	<div class="mt-8">
+		<a href="/tools" class="text-sm text-(--color-primary) hover:underline">
+			Just need a quick calculator? Try our standalone tools &rarr;
+		</a>
+	</div>
+
+	<div class="mt-6 text-sm text-(--color-text-muted)">
 		100% client-side. No accounts. No tracking. Your data stays in your browser.
 	</div>
 </div>
