@@ -1,11 +1,18 @@
 <script lang="ts">
 	import { assessment } from '$lib/stores/assessment';
-	import { CURRENCY_SYMBOLS, VPN_SERVICES } from '$lib/types/assessment';
+	import { CURRENCY_SYMBOLS, VPN_SERVICES, OTHER_SERVICE_PRESETS } from '$lib/types/assessment';
 	import QuestionGroup from '$lib/components/wizard/QuestionGroup.svelte';
 	import ServiceToggle from '$lib/components/wizard/ServiceToggle.svelte';
+	import NumberInput from '$lib/components/wizard/NumberInput.svelte';
+	import SliderInput from '$lib/components/wizard/SliderInput.svelte';
+	import Alert from '$lib/components/shared/Alert.svelte';
 
+	let skill = $derived($assessment.skillLevel);
+	let isBeginner = $derived(skill === 'beginner');
 	let currency = $derived($assessment.currency);
 	let symbol = $derived(CURRENCY_SYMBOLS[currency]);
+
+	let hasAnyCloudStorage = $derived($assessment.cloudStorage.some((s) => s.enabled));
 
 	let totalMonthly = $derived(
 		[
@@ -38,12 +45,31 @@
 	function removeOtherService(index: number) {
 		$assessment.otherServices = $assessment.otherServices.filter((_, i) => i !== index);
 	}
+
+	function addPresetService(preset: typeof OTHER_SERVICE_PRESETS[number]) {
+		const exists = $assessment.otherServices.some(
+			(s) => s.name === preset.name
+		);
+		if (!exists) {
+			$assessment.otherServices = [
+				...$assessment.otherServices,
+				{ ...preset }
+			];
+		}
+	}
 </script>
 
 <h1 class="mb-2 text-2xl font-bold">Current Subscriptions</h1>
 <p class="mb-8 text-(--color-text-muted)">
-	What are you paying for today? This helps us calculate potential savings.
+	What are you paying for today? This helps us calculate your potential savings from self-hosting.
 </p>
+
+{#if isBeginner}
+	<Alert type="beginner">
+		Check off any services you currently pay for. We'll use this to show how much you could save.
+		Don't worry about being exact — estimates are fine.
+	</Alert>
+{/if}
 
 <!-- Floating total -->
 <div class="sticky top-4 z-10 mb-6 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 p-3 text-center">
@@ -56,7 +82,7 @@
 	</span>
 </div>
 
-<QuestionGroup label="Streaming Video">
+<QuestionGroup label="Streaming Video" description={isBeginner ? "Self-hosting doesn't directly replace these — you need your own media to serve. But it shows the full picture of what you're paying." : undefined}>
 	<div class="flex flex-col gap-2">
 		{#each $assessment.streamingServices as service, i}
 			<ServiceToggle
@@ -82,7 +108,7 @@
 	</div>
 </QuestionGroup>
 
-<QuestionGroup label="Cloud Storage">
+<QuestionGroup label="Cloud Storage" description={isBeginner ? 'Services like Google Drive, iCloud, Dropbox — where your files live in the cloud.' : undefined}>
 	<div class="flex flex-col gap-2">
 		{#each $assessment.cloudStorage as service, i}
 			<ServiceToggle
@@ -93,6 +119,19 @@
 			/>
 		{/each}
 	</div>
+	{#if hasAnyCloudStorage}
+		<div class="mt-3 rounded-lg bg-(--color-surface-alt) p-3">
+			<label for="cloudStorageUsed" class="mb-1 block text-sm font-medium">How much cloud storage are you actually using?</label>
+			<div class="flex items-center gap-3">
+				<NumberInput id="cloudStorageUsed" bind:value={$assessment.cloudStorageUsedGB} min={0} max={10000} step={10} suffix="GB" />
+			</div>
+			{#if isBeginner}
+				<p class="mt-1 text-xs text-(--color-text-muted)">
+					Check your Google Drive, iCloud, or Dropbox storage settings to find this number.
+				</p>
+			{/if}
+		</div>
+	{/if}
 </QuestionGroup>
 
 <QuestionGroup label="Photo Backup">
@@ -108,7 +147,7 @@
 	</div>
 </QuestionGroup>
 
-<QuestionGroup label="VPN Service">
+<QuestionGroup label="VPN Service" description={isBeginner ? "A VPN hides your internet activity. Useful for privacy and some self-hosting setups." : undefined}>
 	<div class="flex flex-col gap-2">
 		{#each VPN_SERVICES as svc}
 			<ServiceToggle
@@ -124,6 +163,20 @@
 </QuestionGroup>
 
 <QuestionGroup label="Other Services" description="Password managers, note-taking, recipes, automation, etc.">
+	{#if $assessment.otherServices.length === 0 && skill !== 'advanced'}
+		<p class="mb-3 text-sm text-(--color-text-muted)">Quick add common services:</p>
+		<div class="mb-3 flex flex-wrap gap-2">
+			{#each OTHER_SERVICE_PRESETS as preset}
+				<button
+					type="button"
+					onclick={() => addPresetService(preset)}
+					class="cursor-pointer rounded-full border border-(--color-border) px-3 py-1 text-xs transition-colors hover:border-(--color-primary) hover:text-(--color-primary)"
+				>
+					+ {preset.name}
+				</button>
+			{/each}
+		</div>
+	{/if}
 	<div class="flex flex-col gap-2">
 		{#each $assessment.otherServices as service, i}
 			<div class="flex items-center gap-3 rounded-lg border border-(--color-border) p-3">

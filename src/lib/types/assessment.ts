@@ -25,6 +25,9 @@ export const LOCATIONS: Record<string, LocationConfig> = {
 	us_tx: { label: 'US (Texas)', defaultElectricityRate: 0.13, currency: 'USD' },
 	us_ny: { label: 'US (New York)', defaultElectricityRate: 0.2, currency: 'USD' },
 	canada: { label: 'Canada', defaultElectricityRate: 0.13, currency: 'CAD' },
+	ca_on: { label: 'Canada (Ontario)', defaultElectricityRate: 0.13, currency: 'CAD' },
+	ca_qc: { label: 'Canada (Quebec)', defaultElectricityRate: 0.07, currency: 'CAD' },
+	ca_bc: { label: 'Canada (BC)', defaultElectricityRate: 0.1172, currency: 'CAD' },
 	uk: { label: 'United Kingdom', defaultElectricityRate: 0.28, currency: 'GBP' },
 	germany: { label: 'Germany', defaultElectricityRate: 0.35, currency: 'EUR' },
 	france: { label: 'France', defaultElectricityRate: 0.21, currency: 'EUR' },
@@ -48,7 +51,15 @@ export interface ExistingSSD {
 	ageYears: number;
 }
 
-export type MachineType = 'none' | 'desktop' | 'laptop' | 'mini_pc' | 'enterprise' | 'nas';
+export type MachineType =
+	| 'none'
+	| 'unsure'
+	| 'desktop'
+	| 'laptop'
+	| 'dual_purpose'
+	| 'mini_pc'
+	| 'enterprise'
+	| 'nas';
 
 export interface BYODConfig {
 	machineType: MachineType;
@@ -88,7 +99,9 @@ export const STREAMING_SERVICES: Omit<ServiceCost, 'enabled'>[] = [
 	{ id: 'paramount_plus', name: 'Paramount+', monthlyCost: 12.99 },
 	{ id: 'apple_tv', name: 'Apple TV+', monthlyCost: 9.99 },
 	{ id: 'amazon_prime', name: 'Prime Video', monthlyCost: 8.99 },
-	{ id: 'youtube_premium', name: 'YouTube Premium', monthlyCost: 13.99 }
+	{ id: 'youtube_premium', name: 'YouTube Premium', monthlyCost: 13.99 },
+	{ id: 'netflix_4k', name: 'Netflix (4K)', monthlyCost: 22.99 },
+	{ id: 'crunchyroll', name: 'Crunchyroll', monthlyCost: 7.99 }
 ];
 
 export const MUSIC_SERVICES: Omit<ServiceCost, 'enabled'>[] = [
@@ -96,14 +109,21 @@ export const MUSIC_SERVICES: Omit<ServiceCost, 'enabled'>[] = [
 	{ id: 'apple_music', name: 'Apple Music', monthlyCost: 10.99 },
 	{ id: 'youtube_music', name: 'YouTube Music', monthlyCost: 10.99 },
 	{ id: 'tidal', name: 'Tidal', monthlyCost: 10.99 },
-	{ id: 'amazon_music', name: 'Amazon Music', monthlyCost: 9.99 }
+	{ id: 'amazon_music', name: 'Amazon Music', monthlyCost: 9.99 },
+	{ id: 'spotify_family', name: 'Spotify (Family)', monthlyCost: 19.99 },
+	{ id: 'apple_music_family', name: 'Apple Music (Family)', monthlyCost: 16.99 }
 ];
 
 export const CLOUD_STORAGE_SERVICES: Omit<StorageServiceCost, 'enabled'>[] = [
-	{ id: 'google_one', name: 'Google One', monthlyCost: 2.99, storageGB: 200 },
-	{ id: 'icloud', name: 'iCloud+', monthlyCost: 2.99, storageGB: 200 },
-	{ id: 'dropbox', name: 'Dropbox', monthlyCost: 11.99, storageGB: 2000 },
-	{ id: 'onedrive', name: 'OneDrive', monthlyCost: 1.99, storageGB: 100 }
+	{ id: 'google_one_100', name: 'Google One (100 GB)', monthlyCost: 1.99, storageGB: 100 },
+	{ id: 'google_one_200', name: 'Google One (200 GB)', monthlyCost: 2.99, storageGB: 200 },
+	{ id: 'google_one_2tb', name: 'Google One (2 TB)', monthlyCost: 9.99, storageGB: 2000 },
+	{ id: 'icloud_50', name: 'iCloud+ (50 GB)', monthlyCost: 0.99, storageGB: 50 },
+	{ id: 'icloud_200', name: 'iCloud+ (200 GB)', monthlyCost: 2.99, storageGB: 200 },
+	{ id: 'icloud_2tb', name: 'iCloud+ (2 TB)', monthlyCost: 9.99, storageGB: 2000 },
+	{ id: 'dropbox', name: 'Dropbox Plus (2 TB)', monthlyCost: 11.99, storageGB: 2000 },
+	{ id: 'onedrive_100', name: 'OneDrive (100 GB)', monthlyCost: 1.99, storageGB: 100 },
+	{ id: 'onedrive_1tb', name: 'OneDrive (1 TB)', monthlyCost: 6.99, storageGB: 1000 }
 ];
 
 export const PHOTO_BACKUP_SERVICES: Omit<ServiceCost, 'enabled'>[] = [
@@ -132,11 +152,32 @@ export type AutomationLevel = 'full' | 'semi' | 'manual';
 
 export type PhotoDeviceType = 'phone' | 'tablet' | 'dslr' | 'action_cam' | 'drone';
 export type DeviceUsage = 'light' | 'moderate' | 'heavy';
+export type VideoFrequency = 'yes' | 'some' | 'rarely';
+export type PhotoBackupIntent = 'replace' | 'additional' | 'no';
+export type MLPreference = 'full' | 'basic' | 'backup_only';
 
 export interface PhotoDevice {
 	type: PhotoDeviceType;
 	usage: DeviceUsage;
+	shootsVideo: VideoFrequency;
 }
+
+export const PHOTO_DEVICE_LABELS: Record<PhotoDeviceType, string> = {
+	phone: 'Phone',
+	tablet: 'Tablet',
+	dslr: 'DSLR / Mirrorless',
+	action_cam: 'Action Camera',
+	drone: 'Drone'
+};
+
+// Rule-of-thumb annual storage by profile
+export const PHOTO_SIZE_GUIDE = [
+	{ label: 'Casual phone photographer', range: '20-50 GB/year' },
+	{ label: 'Active phone photographer', range: '50-150 GB/year' },
+	{ label: 'Family with kids (lots of photos + videos)', range: '100-400 GB/year' },
+	{ label: 'Enthusiast with DSLR/mirrorless', range: '200-500 GB/year' },
+	{ label: 'Prolific shooter/videographer', range: '500 GB - 2 TB/year' }
+];
 
 // Annual photo growth in GB per device usage level
 export const PHOTO_GROWTH_PER_YEAR: Record<PhotoDeviceType, Record<DeviceUsage, number>> = {
@@ -146,6 +187,19 @@ export const PHOTO_GROWTH_PER_YEAR: Record<PhotoDeviceType, Record<DeviceUsage, 
 	action_cam: { light: 5, moderate: 20, heavy: 60 },
 	drone: { light: 10, moderate: 30, heavy: 80 }
 };
+
+// Pre-defined "other" self-hostable service categories
+export const OTHER_SERVICE_PRESETS: OtherServiceCost[] = [
+	{ name: '1Password', monthlyCost: 3, category: 'password_manager' },
+	{ name: 'Bitwarden', monthlyCost: 1, category: 'password_manager' },
+	{ name: 'LastPass', monthlyCost: 3, category: 'password_manager' },
+	{ name: 'Dashlane', monthlyCost: 5, category: 'password_manager' },
+	{ name: 'Notion', monthlyCost: 10, category: 'notes' },
+	{ name: 'Evernote', monthlyCost: 8, category: 'notes' },
+	{ name: 'Obsidian Sync', monthlyCost: 4, category: 'notes' },
+	{ name: 'Pocket Premium', monthlyCost: 5, category: 'read_later' },
+	{ name: 'Raindrop.io Pro', monthlyCost: 3, category: 'bookmarks' }
+];
 
 // ── Screen 6: Files ──
 
@@ -224,6 +278,7 @@ export interface AssessmentState {
 	streamingServices: ServiceCost[];
 	musicServices: ServiceCost[];
 	cloudStorage: StorageServiceCost[];
+	cloudStorageUsedGB: number;
 	photoBackupServices: ServiceCost[];
 	vpnService: ServiceCost | null;
 	otherServices: OtherServiceCost[];
@@ -242,10 +297,10 @@ export interface AssessmentState {
 	wantsLossless: boolean;
 
 	// Screen 5: Photos
-	wantsPhotoBackup: boolean;
+	photoBackupIntent: PhotoBackupIntent;
 	photoDevices: PhotoDevice[];
 	existingPhotoLibraryGB: number;
-	wantsMLFeatures: boolean;
+	mlPreference: MLPreference;
 
 	// Screen 6: Files
 	wantsFileSync: boolean;
@@ -298,6 +353,7 @@ export const DEFAULT_ASSESSMENT: AssessmentState = {
 	streamingServices: STREAMING_SERVICES.map((s) => ({ ...s, enabled: false })),
 	musicServices: MUSIC_SERVICES.map((s) => ({ ...s, enabled: false })),
 	cloudStorage: CLOUD_STORAGE_SERVICES.map((s) => ({ ...s, enabled: false })),
+	cloudStorageUsedGB: 0,
 	photoBackupServices: PHOTO_BACKUP_SERVICES.map((s) => ({ ...s, enabled: false })),
 	vpnService: null,
 	otherServices: [],
@@ -316,10 +372,10 @@ export const DEFAULT_ASSESSMENT: AssessmentState = {
 	wantsLossless: false,
 
 	// Screen 5
-	wantsPhotoBackup: false,
+	photoBackupIntent: 'no',
 	photoDevices: [],
 	existingPhotoLibraryGB: 0,
-	wantsMLFeatures: false,
+	mlPreference: 'basic',
 
 	// Screen 6
 	wantsFileSync: false,

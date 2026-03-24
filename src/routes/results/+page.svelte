@@ -12,9 +12,11 @@
 	import BarChart from '$lib/components/results/BarChart.svelte';
 	import LineChart from '$lib/components/results/LineChart.svelte';
 
+	let isBeginner = $derived($assessment.skillLevel === 'beginner');
 	let symbol = $derived(CURRENCY_SYMBOLS[$assessment.currency]);
 
 	let storage = $derived(estimateStorage($assessment, $defaults));
+	let wattage = $derived(estimateWattage($assessment, $defaults));
 	let electricityCost = $derived(calcElectricityCost($assessment, $defaults));
 	let hardware = $derived(estimateHardwareCost($assessment, $defaults, storage));
 	let risk = $derived(analyzeRisk($assessment, $defaults, storage.withHeadroomGB));
@@ -24,13 +26,27 @@
 		calcBreakEven(monthlySaas, monthlySelfHosted, hardware.total, risk.annualizedReplacementCost, $defaults)
 	);
 	let recommendation = $derived(generateRecommendation($assessment, monthlySaas, breakEven));
-	let wattage = $derived(estimateWattage($assessment, $defaults));
 
-	const RISK_COLORS = {
+	let monthlySavings = $derived(monthlySaas - monthlySelfHosted);
+	let vpnCost = $derived(
+		$assessment.vpnService?.enabled ? $assessment.vpnService.monthlyCost : 0
+	);
+	let domainCost = $derived($assessment.wantsDomain ? 1 : 0); // ~$12/yr
+	let offsiteCost = $derived(monthlySelfHosted - electricityCost - vpnCost - domainCost);
+
+	const RISK_COLORS: Record<string, string> = {
 		low: '#22c55e',
 		medium: '#f59e0b',
 		high: '#ef4444',
 		very_high: '#991b1b'
+	};
+
+	const TIER_LABELS: Record<string, string> = {
+		stick_with_saas: 'Stay With SaaS',
+		managed_nas: 'Managed NAS',
+		diy_simple: 'Simple DIY',
+		diy_full: 'Full Stack DIY',
+		cloud_hosted: 'Cloud Hosted'
 	};
 
 	const TIER_COLORS: Record<string, string> = {
@@ -48,6 +64,21 @@
 	function fmtRound(v: number): string {
 		return `${symbol}${Math.round(v)}`;
 	}
+
+	function fmtStorage(gb: number): string {
+		if (gb >= 1000) return `${(gb / 1000).toFixed(1)} TB`;
+		return `${Math.round(gb)} GB`;
+	}
+
+	let storageCategories = $derived(
+		[
+			{ label: 'Media', gb: storage.mediaGB, color: '#6366f1' },
+			{ label: 'Music', gb: storage.musicGB, color: '#8b5cf6' },
+			{ label: 'Photos', gb: storage.photosGB, color: '#22c55e' },
+			{ label: 'Files', gb: storage.filesGB, color: '#3b82f6' },
+			{ label: 'System + headroom', gb: storage.systemGB + (storage.withHeadroomGB - storage.rawTotalGB), color: '#94a3b8' }
+		].filter(c => c.gb > 0)
+	);
 </script>
 
 <svelte:head>
@@ -57,7 +88,11 @@
 <div class="mx-auto max-w-3xl px-4 py-8">
 	<h1 class="mb-2 text-2xl font-bold">Your Results</h1>
 	<p class="mb-8 text-(--color-text-muted)">
-		Here's your personalized self-hosting cost/benefit analysis.
+		{#if isBeginner}
+			Here's what we found based on your answers. Don't worry if the numbers aren't perfect — this is a starting estimate.
+		{:else}
+			Your personalized self-hosting cost/benefit analysis.
+		{/if}
 	</p>
 
 	<!-- Recommendation Card -->
@@ -65,14 +100,19 @@
 		class="mb-8 rounded-xl border-2 p-6"
 		style="border-color: {TIER_COLORS[recommendation.tier]}"
 	>
-		<div class="mb-1 text-sm font-medium uppercase tracking-wide" style="color: {TIER_COLORS[recommendation.tier]}">
-			Recommendation
+		<div class="mb-1 flex items-center gap-2">
+			<span
+				class="rounded-full px-3 py-0.5 text-xs font-semibold uppercase tracking-wide text-white"
+				style="background-color: {TIER_COLORS[recommendation.tier]}"
+			>
+				{TIER_LABELS[recommendation.tier]}
+			</span>
 		</div>
 		<h2 class="mb-2 text-xl font-bold">{recommendation.title}</h2>
 		<p class="mb-4 text-(--color-text-muted)">{recommendation.summary}</p>
 		<ul class="space-y-1">
 			{#each recommendation.reasons as reason}
-				<li class="text-sm text-(--color-text-muted)">• {reason}</li>
+				<li class="text-sm text-(--color-text-muted)">{reason}</li>
 			{/each}
 		</ul>
 	</div>
@@ -89,43 +129,84 @@
 		/>
 		<div class="mt-4 grid grid-cols-2 gap-4 text-sm">
 			<div>
-				<div class="text-(--color-text-muted)">Current monthly</div>
+				<div class="text-(--color-text-muted)">What you pay now</div>
 				<div class="text-lg font-bold text-red-500">{fmt(monthlySaas)}/mo</div>
 				<div class="text-(--color-text-muted)">{fmtRound(monthlySaas * 12)}/yr</div>
 			</div>
 			<div>
-				<div class="text-(--color-text-muted)">Self-hosted monthly</div>
+				<div class="text-(--color-text-muted)">Self-hosted ongoing</div>
 				<div class="text-lg font-bold text-green-500">{fmt(monthlySelfHosted)}/mo</div>
-				<div class="text-xs text-(--color-text-muted)">
-					Electricity ({wattage}W): {fmt(electricityCost)}
-					{#if monthlySelfHosted > electricityCost}
-						+ services: {fmt(monthlySelfHosted - electricityCost)}
-					{/if}
+				<div class="text-(--color-text-muted)">{fmtRound(monthlySelfHosted * 12)}/yr</div>
+			</div>
+		</div>
+
+		{#if monthlySavings > 0}
+			<div class="mt-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-3 text-center">
+				<span class="text-sm text-(--color-text-muted)">Monthly savings:</span>
+				<span class="ml-2 text-lg font-bold text-green-600">{fmt(monthlySavings)}/mo</span>
+				<span class="text-sm text-(--color-text-muted)">({fmtRound(monthlySavings * 12)}/yr)</span>
+			</div>
+		{/if}
+
+		<!-- Ongoing expense breakdown -->
+		<div class="mt-4 border-t border-(--color-border) pt-4">
+			<h4 class="mb-2 text-sm font-medium text-(--color-text-muted)">Ongoing expense breakdown:</h4>
+			<div class="space-y-1 text-sm">
+				<div class="flex justify-between">
+					<span>Electricity ({wattage}W)</span>
+					<span>{fmt(electricityCost)}/mo</span>
 				</div>
+				{#if vpnCost > 0}
+					<div class="flex justify-between">
+						<span>VPN service</span>
+						<span>{fmt(vpnCost)}/mo</span>
+					</div>
+				{/if}
+				{#if $assessment.wantsDomain}
+					<div class="flex justify-between">
+						<span>Domain name</span>
+						<span>~{fmt(domainCost)}/mo</span>
+					</div>
+				{/if}
+				{#if $assessment.wantsOffsiteBackup === 'cloud'}
+					<div class="flex justify-between">
+						<span>Cloud backup (off-site)</span>
+						<span>{fmt(Math.max(0, offsiteCost))}/mo</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
 
 	<!-- Break-Even Timeline -->
 	<div class="mb-8 rounded-xl border border-(--color-border) p-6">
-		<h3 class="mb-4 text-lg font-semibold">Break-Even Timeline</h3>
+		<h3 class="mb-1 text-lg font-semibold">Break-Even Timeline</h3>
+		{#if isBeginner}
+			<p class="mb-4 text-sm text-(--color-text-muted)">
+				This shows when your savings from lower monthly costs will cover the initial hardware purchase.
+			</p>
+		{/if}
 		<LineChart data={breakEven.cumulativeCosts} formatValue={(v) => fmtRound(v)} />
 		<div class="mt-4 grid grid-cols-3 gap-4 text-center text-sm">
 			<div>
-				<div class="text-(--color-text-muted)">Simple break-even</div>
+				<div class="text-(--color-text-muted)">{isBeginner ? 'Pays for itself in' : 'Simple break-even'}</div>
 				<div class="text-lg font-bold">
 					{breakEven.simpleMonths ? `${breakEven.simpleMonths} mo` : 'N/A'}
 				</div>
 			</div>
 			<div>
-				<div class="text-(--color-text-muted)">Risk-adjusted</div>
+				<div class="text-(--color-text-muted)">{isBeginner ? 'Including repairs' : 'Risk-adjusted'}</div>
 				<div class="text-lg font-bold">
 					{breakEven.riskAdjustedMonths ? `${breakEven.riskAdjustedMonths} mo` : 'N/A'}
 				</div>
 			</div>
 			<div>
 				<div class="text-(--color-text-muted)">5-year savings</div>
-				<div class="text-lg font-bold" class:text-green-500={breakEven.fiveYearSavings > 0} class:text-red-500={breakEven.fiveYearSavings < 0}>
+				<div
+					class="text-lg font-bold"
+					class:text-green-500={breakEven.fiveYearSavings > 0}
+					class:text-red-500={breakEven.fiveYearSavings < 0}
+				>
 					{fmtRound(breakEven.fiveYearSavings)}
 				</div>
 			</div>
@@ -134,19 +215,27 @@
 
 	<!-- Upfront Costs -->
 	<div class="mb-8 rounded-xl border border-(--color-border) p-6">
-		<h3 class="mb-4 text-lg font-semibold">Upfront Investment</h3>
+		<h3 class="mb-1 text-lg font-semibold">Upfront Investment</h3>
+		{#if isBeginner}
+			<p class="mb-4 text-sm text-(--color-text-muted)">
+				This is the one-time cost to get started. Using hardware you already own reduces this significantly.
+			</p>
+		{/if}
 		<div class="space-y-3">
 			<div class="flex items-center justify-between">
 				<span class="text-sm">{hardware.deviceLabel}</span>
-				<span class="font-medium">{fmtRound(hardware.device)}</span>
+				<span class="font-medium">{hardware.device > 0 ? fmtRound(hardware.device) : 'Free (BYOD)'}</span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-sm">Storage (HDDs/SSDs)</span>
-				<span class="font-medium">{fmtRound(hardware.storage)}</span>
+				<span class="font-medium">{hardware.storage > 0 ? fmtRound(hardware.storage) : 'Existing drives'}</span>
 			</div>
 			{#if hardware.accessories > 0}
 				<div class="flex items-center justify-between">
-					<span class="text-sm">Accessories (UPS, domain, etc.)</span>
+					<span class="text-sm">
+						Accessories
+						{#if isBeginner}(UPS, cables, etc.){/if}
+					</span>
 					<span class="font-medium">{fmtRound(hardware.accessories)}</span>
 				</div>
 			{/if}
@@ -159,46 +248,56 @@
 
 	<!-- Storage Estimate -->
 	<div class="mb-8 rounded-xl border border-(--color-border) p-6">
-		<h3 class="mb-4 text-lg font-semibold">Storage Estimate</h3>
-		<div class="space-y-2">
-			{#if storage.mediaGB > 0}
-				<div class="flex justify-between text-sm">
-					<span>Media (movies + TV)</span>
-					<span>{(storage.mediaGB / 1000).toFixed(1)} TB</span>
-				</div>
-			{/if}
-			{#if storage.musicGB > 0}
-				<div class="flex justify-between text-sm">
-					<span>Music</span>
-					<span>{storage.musicGB >= 1000 ? `${(storage.musicGB / 1000).toFixed(1)} TB` : `${Math.round(storage.musicGB)} GB`}</span>
-				</div>
-			{/if}
-			{#if storage.photosGB > 0}
-				<div class="flex justify-between text-sm">
-					<span>Photos ({$defaults.growthProjectionYears}yr projected)</span>
-					<span>{storage.photosGB >= 1000 ? `${(storage.photosGB / 1000).toFixed(1)} TB` : `${Math.round(storage.photosGB)} GB`}</span>
-				</div>
-			{/if}
-			{#if storage.filesGB > 0}
-				<div class="flex justify-between text-sm">
-					<span>Files & backups</span>
-					<span>{storage.filesGB >= 1000 ? `${(storage.filesGB / 1000).toFixed(1)} TB` : `${Math.round(storage.filesGB)} GB`}</span>
-				</div>
-			{/if}
-			<div class="flex justify-between text-sm text-(--color-text-muted)">
-				<span>System overhead</span>
-				<span>{storage.systemGB} GB</span>
-			</div>
-			<div class="flex items-center justify-between border-t border-(--color-border) pt-3">
-				<span class="font-semibold">Total (with 15% headroom)</span>
-				<span class="text-lg font-bold">{(storage.withHeadroomGB / 1000).toFixed(1)} TB</span>
-			</div>
+		<h3 class="mb-1 text-lg font-semibold">Storage Estimate</h3>
+		{#if isBeginner}
+			<p class="mb-4 text-sm text-(--color-text-muted)">
+				How much disk space you'll need for everything you want to store.
+			</p>
+		{/if}
+
+		<!-- Visual bar breakdown -->
+		<div class="mb-4 flex h-6 overflow-hidden rounded-full">
+			{#each storageCategories as cat}
+				{@const pct = (cat.gb / storage.withHeadroomGB) * 100}
+				{#if pct > 0}
+					<div
+						class="flex items-center justify-center text-[10px] font-medium text-white"
+						style="width: {pct}%; background-color: {cat.color}; min-width: {pct > 5 ? '0' : '4'}px"
+						title="{cat.label}: {fmtStorage(cat.gb)}"
+					>
+						{#if pct > 10}{cat.label}{/if}
+					</div>
+				{/if}
+			{/each}
 		</div>
+		<div class="mb-4 flex flex-wrap gap-3 text-xs">
+			{#each storageCategories as cat}
+				<span class="flex items-center gap-1">
+					<span class="inline-block h-2.5 w-2.5 rounded-full" style="background-color: {cat.color}"></span>
+					{cat.label}: {fmtStorage(cat.gb)}
+				</span>
+			{/each}
+		</div>
+
+		<div class="flex items-center justify-between border-t border-(--color-border) pt-3">
+			<span class="font-semibold">Total needed</span>
+			<span class="text-lg font-bold">{fmtStorage(storage.withHeadroomGB)}</span>
+		</div>
+		{#if isBeginner}
+			<p class="mt-2 text-xs text-(--color-text-muted)">
+				Includes 15% headroom for growth. Remember: buy one size up from what you think you'll need.
+			</p>
+		{/if}
 	</div>
 
 	<!-- Risk Analysis -->
 	<div class="mb-8 rounded-xl border border-(--color-border) p-6">
-		<h3 class="mb-4 text-lg font-semibold">Risk Analysis</h3>
+		<h3 class="mb-1 text-lg font-semibold">Risk Analysis</h3>
+		{#if isBeginner}
+			<p class="mb-4 text-sm text-(--color-text-muted)">
+				Hard drives fail eventually. Here's the likelihood and estimated cost.
+			</p>
+		{/if}
 		{#if risk.totalDrives > 0}
 			<div class="mb-4 flex items-center gap-3">
 				<div
@@ -211,40 +310,101 @@
 			</div>
 			<div class="space-y-2 text-sm">
 				<div class="flex justify-between">
-					<span>Annual failure probability (any drive)</span>
-					<span>{(risk.annualFailureProbability * 100).toFixed(1)}%</span>
+					<span>{isBeginner ? 'Chance of a drive failing this year' : 'Annual failure probability (any drive)'}</span>
+					<span class="font-medium">{(risk.annualFailureProbability * 100).toFixed(1)}%</span>
 				</div>
 				<div class="flex justify-between">
-					<span>5-year failure probability</span>
-					<span>{(risk.fiveYearFailureProbability * 100).toFixed(1)}%</span>
+					<span>{isBeginner ? 'Chance of failure within 5 years' : '5-year failure probability'}</span>
+					<span class="font-medium">{(risk.fiveYearFailureProbability * 100).toFixed(1)}%</span>
 				</div>
 				<div class="flex justify-between">
-					<span>Annualized replacement cost</span>
-					<span>{fmt(risk.annualizedReplacementCost)}/yr</span>
+					<span>{isBeginner ? 'Set aside for replacements' : 'Annualized replacement cost'}</span>
+					<span class="font-medium">{fmt(risk.annualizedReplacementCost)}/yr</span>
 				</div>
 			</div>
+			{#if isBeginner && risk.riskLevel !== 'low'}
+				<p class="mt-3 text-sm text-(--color-text-muted)">
+					This is why backups matter! With RAID, a single drive failure won't lose your data.
+					But remember — RAID is not a backup. Keep important files in at least two places.
+				</p>
+			{/if}
 		{:else}
 			<p class="text-sm text-(--color-text-muted)">
-				No storage drives configured — risk analysis requires drive information.
+				No storage drives configured — risk analysis will update once you add drive information on the Hardware page.
 			</p>
 		{/if}
 	</div>
 
-	<!-- Actions -->
-	<div class="flex flex-wrap gap-4">
-		<a
-			href="/assess/about-you"
-			class="rounded-lg border border-(--color-border) px-6 py-3 text-sm font-medium transition-colors hover:bg-(--color-surface-alt)"
+	{#if $assessment.uploadSpeed < 20 && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
+		<div class="mb-8 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-6">
+			<h3 class="mb-2 text-lg font-semibold">Bandwidth Warning</h3>
+			<p class="text-sm text-(--color-text-muted)">
+				Your upload speed ({$assessment.uploadSpeed} Mbps) may struggle with remote streaming.
+				{#if isBeginner}
+					This means watching media from outside your home could buffer or have poor quality.
+					Consider cloud-hosted self-hosting (like Hetzner) for reliable remote access, or
+					stick to local-only use.
+				{:else}
+					At {$assessment.uploadSpeed} Mbps, you can support ~{Math.floor($assessment.uploadSpeed / 5)} simultaneous 1080p remote streams.
+					Consider Hetzner/OVH dedicated servers for remote-heavy use cases.
+				{/if}
+			</p>
+		</div>
+	{/if}
+
+	<!-- Call to Action -->
+	<div class="mb-8 rounded-xl border border-(--color-border) bg-(--color-surface-alt) p-6">
+		<h3 class="mb-4 text-lg font-semibold">What's Next?</h3>
+		<div class="grid gap-3 sm:grid-cols-2">
+			{#if recommendation.tier !== 'stick_with_saas'}
+				<a
+					href="/assess/quick-start"
+					class="rounded-lg bg-(--color-primary) px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover)"
+				>
+					Review Quick Start Tips
+				</a>
+			{/if}
+			<a
+				href="/assess/about-you"
+				class="rounded-lg border border-(--color-border) px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-(--color-surface)"
+			>
+				Edit Answers
+			</a>
+		</div>
+		{#if recommendation.tier === 'stick_with_saas'}
+			<p class="mt-4 text-sm text-(--color-text-muted)">
+				Not convinced? Even a minimal setup with just photo backup (Immich) can be worth it
+				for the privacy benefits alone.
+			</p>
+		{:else}
+			<p class="mt-4 text-sm text-(--color-text-muted)">
+				Want to learn more first? Check out <a href="https://reddit.com/r/selfhosted" class="text-(--color-primary) hover:underline" target="_blank" rel="noopener">r/selfhosted</a> —
+				it's a great community for getting started.
+			</p>
+		{/if}
+	</div>
+
+	<!-- Export -->
+	<div class="flex flex-wrap gap-3 text-sm">
+		<button
+			onclick={() => navigator.clipboard.writeText(JSON.stringify($assessment, null, 2))}
+			class="cursor-pointer rounded-lg border border-(--color-border) px-4 py-2 transition-colors hover:bg-(--color-surface-alt)"
 		>
-			&larr; Edit Answers
-		</a>
+			Copy Assessment JSON
+		</button>
 		<button
 			onclick={() => {
-				navigator.clipboard.writeText(JSON.stringify($assessment, null, 2));
+				const blob = new Blob([JSON.stringify($assessment, null, 2)], { type: 'application/json' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = 'selfhost-assessment.json';
+				a.click();
+				URL.revokeObjectURL(url);
 			}}
-			class="cursor-pointer rounded-lg border border-(--color-border) px-6 py-3 text-sm font-medium transition-colors hover:bg-(--color-surface-alt)"
+			class="cursor-pointer rounded-lg border border-(--color-border) px-4 py-2 transition-colors hover:bg-(--color-surface-alt)"
 		>
-			Copy Results JSON
+			Download Assessment
 		</button>
 	</div>
 </div>

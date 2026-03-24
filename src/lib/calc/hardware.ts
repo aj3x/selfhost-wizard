@@ -33,7 +33,7 @@ export function estimateHardwareCost(
 	if (state.byod.machineType === 'none') {
 		// Recommend based on complexity
 		const needsTranscoding = state.needsTranscoding && state.concurrentStreams >= 3;
-		const wantsML = state.wantsMLFeatures;
+		const wantsML = state.mlPreference === 'full';
 		const totalStorageTB = storage.withHeadroomGB / 1000;
 
 		if (totalStorageTB > 20 || needsTranscoding) {

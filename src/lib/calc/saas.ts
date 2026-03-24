@@ -38,7 +38,7 @@ export function calcMonthlySelfHostedCost(
 	if (state.wantsOffsiteBackup === 'cloud') {
 		// Rough estimate: critical data only (photos + files, not media)
 		let backupGB = 0;
-		if (state.wantsPhotoBackup) backupGB += state.existingPhotoLibraryGB;
+		if (state.photoBackupIntent !== 'no') backupGB += state.existingPhotoLibraryGB;
 		if (state.wantsFileSync) backupGB += state.computers.reduce((sum, c) => sum + c.sizeGB, 0);
 		const backupTB = Math.max(0.1, backupGB / 1000); // minimum 0.1 TB
 		total += backupTB * defaults.offsiteCostPerTbMonth;

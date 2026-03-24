@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { assessment } from '$lib/stores/assessment';
 
 	export const WIZARD_STEPS = [
 		{ path: '/assess/about-you', label: 'About You', shortLabel: 'You' },
@@ -20,9 +21,14 @@
 	let isFirst = $derived(currentIndex <= 0);
 	let isLast = $derived(currentIndex >= WIZARD_STEPS.length - 1);
 	let progress = $derived(((currentIndex + 1) / WIZARD_STEPS.length) * 100);
+	let skill = $derived($assessment.skillLevel);
 
 	function goBack() {
-		if (!isFirst) goto(WIZARD_STEPS[currentIndex - 1].path);
+		if (isFirst) {
+			goto('/assess/quick-start');
+		} else {
+			goto(WIZARD_STEPS[currentIndex - 1].path);
+		}
 	}
 
 	function goNext() {
@@ -44,14 +50,22 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
-	<!-- Progress bar -->
+	<!-- Top bar: progress + quick start link -->
 	<div class="mb-2 flex items-center justify-between">
 		<span class="text-sm text-(--color-text-muted)">
 			Step {currentIndex + 1} of {WIZARD_STEPS.length}
 		</span>
-		<span class="text-sm font-medium">
-			{currentIndex >= 0 ? WIZARD_STEPS[currentIndex].label : ''}
-		</span>
+		<div class="flex items-center gap-3">
+			<a
+				href="/assess/quick-start"
+				class="text-xs text-(--color-primary) hover:underline"
+			>
+				Quick Start Tips
+			</a>
+			<span class="text-sm font-medium">
+				{currentIndex >= 0 ? WIZARD_STEPS[currentIndex].label : ''}
+			</span>
+		</div>
 	</div>
 
 	<div class="mb-8 h-2 w-full overflow-hidden rounded-full bg-(--color-border)">
@@ -87,20 +101,16 @@
 	<div class="mt-8 flex items-center justify-between border-t border-(--color-border) pt-4">
 		<button
 			onclick={goBack}
-			disabled={isFirst}
-			class="rounded-lg px-6 py-2.5 text-sm font-medium transition-colors
-				{isFirst
-				? 'text-(--color-text-muted) cursor-not-allowed'
-				: 'text-(--color-text) hover:bg-(--color-surface-alt) cursor-pointer'}"
+			class="cursor-pointer rounded-lg px-6 py-2.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-(--color-surface-alt)"
 		>
-			&larr; Back
+			&larr; {isFirst ? 'Quick Start' : 'Back'}
 		</button>
 
 		<button
 			onclick={goNext}
 			class="cursor-pointer rounded-lg bg-(--color-primary) px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover)"
 		>
-			{isLast ? 'See Results →' : 'Next →'}
+			{isLast ? 'See Results' : 'Next'} &rarr;
 		</button>
 	</div>
 </div>

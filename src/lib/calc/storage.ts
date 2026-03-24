@@ -50,7 +50,7 @@ export function estimateStorage(
 
 	// Photos
 	let photosGB = 0;
-	if (state.wantsPhotoBackup) {
+	if (state.photoBackupIntent !== 'no') {
 		const annualGrowth = state.photoDevices.reduce(
 			(sum, d) => sum + (PHOTO_GROWTH_PER_YEAR[d.type]?.[d.usage] ?? 0),
 			0
