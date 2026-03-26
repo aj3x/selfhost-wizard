@@ -42,8 +42,11 @@
 		</div>
 	</div>
 
-	<div class="mt-8">
-		<a href="/tools" class="text-sm text-(--color-primary) hover:underline">
+	<div class="mt-8 flex flex-col items-center gap-2">
+		<a href="/configure" class="text-sm text-(--color-primary) hover:underline">
+			Already know what you want? Jump to the Configurator &rarr;
+		</a>
+		<a href="/tools" class="text-sm text-(--color-text-muted) hover:underline">
 			Just need a quick calculator? Try our standalone tools &rarr;
 		</a>
 	</div>

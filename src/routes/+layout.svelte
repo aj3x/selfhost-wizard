@@ -14,6 +14,7 @@
 				<a href="/" class="text-sm font-semibold text-(--color-primary) hover:underline">SelfHost Wizard</a>
 				<div class="flex items-center gap-4 text-xs">
 					<a href="/assess/quick-start" class="text-(--color-text-muted) hover:text-(--color-text)">Assessment</a>
+					<a href="/configure" class="text-(--color-text-muted) hover:text-(--color-text)">Configurator</a>
 					<a href="/tools" class="text-(--color-text-muted) hover:text-(--color-text)">Tools</a>
 					<a href="/settings" class="text-(--color-text-muted) hover:text-(--color-text)">Settings</a>
 				</div>
