@@ -69,6 +69,13 @@
 		Configure where your data will live. The setup script will create this structure for you.
 	</p>
 
+	{#if allIds.length === 0}
+		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+			<p class="text-lg font-medium">No services selected</p>
+			<p class="mt-1 text-sm">Go back to select some services first.</p>
+		</div>
+	{:else}
+
 	<!-- Path inputs -->
 	<div class="mb-6 rounded-xl border border-(--color-border) p-4">
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted)">Base Paths</h2>
@@ -168,5 +175,7 @@
 				This is critical for efficient storage use.
 			</p>
 		</div>
+	{/if}
+
 	{/if}
 </div>

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { assessment } from '$lib/stores/assessment';
 	import { defaults } from '$lib/stores/defaults';
+	import { configurator } from '$lib/stores/configurator';
 	import { CURRENCY_SYMBOLS } from '$lib/types/assessment';
 	import { estimateStorage } from '$lib/calc/storage';
 	import { calcElectricityCost, estimateWattage } from '$lib/calc/electricity';
@@ -9,8 +11,15 @@
 	import { calcBreakEven } from '$lib/calc/breakeven';
 	import { calcMonthlySaasCost, calcMonthlySelfHostedCost } from '$lib/calc/saas';
 	import { generateRecommendation } from '$lib/calc/recommendation';
+	import { mapAssessmentToConfigurator } from '$lib/calc/bridge';
 	import BarChart from '$lib/components/results/BarChart.svelte';
 	import LineChart from '$lib/components/results/LineChart.svelte';
+
+	function jumpToConfigurator() {
+		const state = mapAssessmentToConfigurator($assessment);
+		configurator.set(state);
+		goto('/configure/service-select');
+	}
 
 	let isBeginner = $derived($assessment.skillLevel === 'beginner');
 	let symbol = $derived(CURRENCY_SYMBOLS[$assessment.currency]);
@@ -357,12 +366,12 @@
 		<h3 class="mb-4 text-lg font-semibold">What's Next?</h3>
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#if recommendation.tier !== 'stick_with_saas'}
-				<a
-					href="/assess/quick-start"
-					class="rounded-lg bg-(--color-primary) px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover)"
+				<button
+					onclick={jumpToConfigurator}
+					class="cursor-pointer rounded-lg bg-(--color-primary) px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover)"
 				>
-					Review Quick Start Tips
-				</a>
+					Build Your Docker Setup
+				</button>
 			{/if}
 			<a
 				href="/assess/about-you"
@@ -374,12 +383,14 @@
 		{#if recommendation.tier === 'stick_with_saas'}
 			<p class="mt-4 text-sm text-(--color-text-muted)">
 				Not convinced? Even a minimal setup with just photo backup (Immich) can be worth it
-				for the privacy benefits alone.
+				for the privacy benefits alone. You can still
+				<button onclick={jumpToConfigurator} class="cursor-pointer text-(--color-primary) hover:underline">
+					jump to the configurator
+				</button> to explore.
 			</p>
 		{:else}
 			<p class="mt-4 text-sm text-(--color-text-muted)">
-				Want to learn more first? Check out <a href="https://reddit.com/r/selfhosted" class="text-(--color-primary) hover:underline" target="_blank" rel="noopener">r/selfhosted</a> —
-				it's a great community for getting started.
+				The configurator will pre-select services based on your answers and generate a ready-to-use Docker Compose setup.
 			</p>
 		{/if}
 	</div>

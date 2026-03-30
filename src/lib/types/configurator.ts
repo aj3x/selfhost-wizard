@@ -149,6 +149,8 @@ export interface ServiceModule {
 	vpnRouted?: boolean;
 	/** Whether this is a multi-container service (e.g. Immich, Nextcloud) */
 	multiContainer?: boolean;
+	/** Brief explanation shown when this service conflicts with another */
+	conflictReason?: string;
 	/** Compose function — returns one or more service definitions based on config */
 	compose: (config: ServiceConfig) => Record<string, ComposeService>;
 }
@@ -386,6 +388,8 @@ export interface ConfiguratorState {
 	activePreset: string | null;
 	/** Whether the user came from assessment */
 	fromAssessment: boolean;
+	/** Cached generated passwords (so they don't change on every render) */
+	generatedSecrets: Record<string, string>;
 }
 
 export const DEFAULT_CONFIGURATOR_STATE: ConfiguratorState = {
@@ -395,7 +399,8 @@ export const DEFAULT_CONFIGURATOR_STATE: ConfiguratorState = {
 	serviceEnv: {},
 	globalConfig: { ...DEFAULT_GLOBAL_CONFIG },
 	activePreset: null,
-	fromAssessment: false
+	fromAssessment: false,
+	generatedSecrets: {}
 };
 
 // ── Generated Output ──

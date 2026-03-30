@@ -35,6 +35,13 @@
 		We've checked your selection for missing dependencies and conflicts.
 	</p>
 
+	{#if allIds.length === 0}
+		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+			<p class="text-lg font-medium">No services selected</p>
+			<p class="mt-1 text-sm">Go back to select some services first.</p>
+		</div>
+	{:else}
+
 	<!-- Resolved dependencies -->
 	{#if $configurator.resolvedDependencies.length > 0}
 		<div class="mb-6 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 p-4">
@@ -103,6 +110,12 @@
 				{@const b = findService(conflict.serviceB)}
 				<div class="mb-3 text-sm">
 					<p><strong>{a?.name}</strong> and <strong>{b?.name}</strong> serve the same purpose — pick one:</p>
+					{#if a?.conflictReason || b?.conflictReason}
+						<div class="mt-1 space-y-0.5 text-xs text-(--color-text-muted)">
+							{#if a?.conflictReason}<p>{a.name}: {a.conflictReason}</p>{/if}
+							{#if b?.conflictReason}<p>{b.name}: {b.conflictReason}</p>{/if}
+						</div>
+					{/if}
 					<div class="mt-2 flex gap-2">
 						<button
 							onclick={() => removeService(conflict.serviceB)}
@@ -181,4 +194,6 @@
 			{/each}
 		</div>
 	</div>
+
+	{/if}
 </div>

@@ -9,6 +9,7 @@ export const caddy: ServiceModule = {
 	requires: [],
 	recommends: [],
 	conflicts: ['nginx-proxy-manager'],
+	conflictReason: 'Caddy uses config files and auto-HTTPS. Best for users comfortable with text configs. NPM has a web GUI.',
 	networks: ['proxy'],
 	ports: [
 		{ host: 80, container: 80 },

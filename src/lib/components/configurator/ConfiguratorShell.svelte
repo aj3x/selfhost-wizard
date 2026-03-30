@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { configurator } from '$lib/stores/configurator';
 
 	const CONFIGURATOR_STEPS = [
 		{ path: '/configure/service-select', label: 'Services', shortLabel: 'Services' },
@@ -17,6 +18,16 @@
 	let isLast = $derived(currentIndex >= CONFIGURATOR_STEPS.length - 1);
 	let progress = $derived(((currentIndex + 1) / CONFIGURATOR_STEPS.length) * 100);
 
+	let allIds = $derived([...$configurator.selectedServices, ...$configurator.resolvedDependencies]);
+	let hasServices = $derived(allIds.length > 0);
+
+	/** Steps are reachable only if prior requirements are met */
+	function canReachStep(index: number): boolean {
+		if (index === 0) return true;
+		// All steps after service-select require at least one service
+		return hasServices;
+	}
+
 	function goBack() {
 		if (!isFirst) {
 			goto(CONFIGURATOR_STEPS[currentIndex - 1].path);
@@ -24,8 +35,14 @@
 	}
 
 	function goNext() {
-		if (!isLast) {
+		if (!isLast && canReachStep(currentIndex + 1)) {
 			goto(CONFIGURATOR_STEPS[currentIndex + 1].path);
+		}
+	}
+
+	function goToStep(index: number) {
+		if (canReachStep(index)) {
+			goto(CONFIGURATOR_STEPS[index].path);
 		}
 	}
 </script>
@@ -51,14 +68,16 @@
 	<!-- Step indicators -->
 	<div class="mb-6 flex gap-1">
 		{#each CONFIGURATOR_STEPS as step, i}
+			{@const reachable = canReachStep(i)}
 			<button
-				onclick={() => goto(step.path)}
+				onclick={() => goToStep(i)}
+				disabled={!reachable}
 				class="flex-1 rounded px-1 py-1.5 text-center text-xs transition-colors
 					{i === currentIndex
 					? 'bg-(--color-primary) text-white font-medium'
-					: i < currentIndex
+					: reachable && i < currentIndex
 						? 'bg-(--color-primary)/10 text-(--color-primary) cursor-pointer hover:bg-(--color-primary)/20'
-						: 'bg-(--color-surface-alt) text-(--color-text-muted)'}"
+						: 'bg-(--color-surface-alt) text-(--color-text-muted) cursor-default opacity-50'}"
 			>
 				{step.shortLabel}
 			</button>
@@ -82,6 +101,8 @@
 
 		{#if isLast}
 			<span class="text-xs text-(--color-text-muted)">Review your configuration below</span>
+		{:else if !canReachStep(currentIndex + 1)}
+			<span class="text-xs text-(--color-text-muted)">Select at least one service to continue</span>
 		{:else}
 			<button
 				onclick={goNext}

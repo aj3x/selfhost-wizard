@@ -6,6 +6,7 @@ import type {
 	DockerNetwork
 } from '$lib/types/configurator';
 import { getService, findService } from '$lib/services/registry';
+import { configurator } from '$lib/stores/configurator';
 
 /**
  * Build a ServiceConfig from the configurator state.
@@ -152,12 +153,12 @@ export function generateEnvFile(state: ConfiguratorState): string {
 	if (allIds.includes('tailscale')) {
 		const authKey = state.serviceEnv['tailscale']?.TS_AUTHKEY || 'your-tailscale-auth-key';
 		lines.push('', '# ── Tailscale ──');
-		lines.push(`TAILSCALE_AUTHKEY=${authKey}`);
+		lines.push(`TS_AUTHKEY=${authKey}`);
 	}
 
 	// Immich DB
 	if (allIds.includes('immich')) {
-		const dbPass = state.serviceEnv['immich']?.IMMICH_DB_PASSWORD || generatePassword();
+		const dbPass = state.serviceEnv['immich']?.IMMICH_DB_PASSWORD || getStableSecret(state, 'IMMICH_DB_PASSWORD');
 		lines.push('', '# ── Immich ──');
 		lines.push(`IMMICH_DB_PASSWORD=${dbPass}`);
 		lines.push('IMMICH_DB_USER=postgres');
@@ -166,7 +167,7 @@ export function generateEnvFile(state: ConfiguratorState): string {
 
 	// Nextcloud DB
 	if (allIds.includes('nextcloud')) {
-		const dbPass = state.serviceEnv['nextcloud']?.NC_DB_PASSWORD || generatePassword();
+		const dbPass = state.serviceEnv['nextcloud']?.NC_DB_PASSWORD || getStableSecret(state, 'NC_DB_PASSWORD');
 		lines.push('', '# ── Nextcloud ──');
 		lines.push(`NC_DB_PASSWORD=${dbPass}`);
 		lines.push('NC_DB_USER=nextcloud');
@@ -175,7 +176,7 @@ export function generateEnvFile(state: ConfiguratorState): string {
 
 	// Paperless DB
 	if (allIds.includes('paperless')) {
-		const dbPass = state.serviceEnv['paperless']?.PAPERLESS_DB_PASSWORD || generatePassword();
+		const dbPass = state.serviceEnv['paperless']?.PAPERLESS_DB_PASSWORD || getStableSecret(state, 'PAPERLESS_DB_PASSWORD');
 		lines.push('', '# ── Paperless ──');
 		lines.push(`PAPERLESS_DB_PASSWORD=${dbPass}`);
 	}
@@ -231,6 +232,21 @@ export function generateSetupScript(state: ConfiguratorState): string {
 		'# Generated automatically. Review before running.',
 		'',
 		'set -euo pipefail',
+		'',
+		'# Check for Docker',
+		'if ! command -v docker &> /dev/null; then',
+		'  echo "ERROR: Docker is not installed."',
+		'  echo "  Install it from https://docs.docker.com/engine/install/"',
+		'  exit 1',
+		'fi',
+		'',
+		'if ! docker compose version &> /dev/null; then',
+		'  echo "ERROR: Docker Compose V2 is not installed."',
+		'  echo "  Install it from https://docs.docker.com/compose/install/"',
+		'  exit 1',
+		'fi',
+		'',
+		'echo "Docker $(docker --version | cut -d\' \' -f3) detected."',
 		'',
 		`PUID=${gc.puid}`,
 		`PGID=${gc.pgid}`,
@@ -419,10 +435,14 @@ function generateCaddyfile(
 		'home-assistant': { sub: 'hass', port: 8123 }
 	};
 
+	const vpnEnabled = allIds.includes('gluetun');
 	for (const id of allIds) {
 		const lookup = portLookup[id];
 		if (lookup) {
-			proxyServices.push({ subdomain: lookup.sub, port: `${id}:${lookup.port}` });
+			const svc = findService(id);
+			// VPN-routed services are reachable via gluetun, not their own hostname
+			const target = (svc?.vpnRouted && vpnEnabled) ? `gluetun:${lookup.port}` : `${id}:${lookup.port}`;
+			proxyServices.push({ subdomain: lookup.sub, port: target });
 		}
 	}
 
@@ -481,15 +501,12 @@ function generateReadme(state: ConfiguratorState, allIds: string[]): string {
 }
 
 /**
- * Generate a cryptographically random password.
+ * Get a stable secret from the store, generating one if it doesn't exist.
+ * This ensures passwords don't change on every render.
  */
-function generatePassword(length = 24): string {
-	const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-	if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-		const array = new Uint8Array(length);
-		crypto.getRandomValues(array);
-		return Array.from(array, (b) => chars[b % chars.length]).join('');
+function getStableSecret(state: ConfiguratorState, key: string): string {
+	if (state.generatedSecrets[key]) {
+		return state.generatedSecrets[key];
 	}
-	// Fallback for SSR
-	return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+	return configurator.getOrCreateSecret(key);
 }

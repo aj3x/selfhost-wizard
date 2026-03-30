@@ -9,6 +9,7 @@ export const nginxProxyManager: ServiceModule = {
 	requires: [],
 	recommends: [],
 	conflicts: ['caddy'],
+	conflictReason: 'NPM has a beginner-friendly web GUI. Caddy is lighter and uses auto-generated config files.',
 	networks: ['proxy'],
 	ports: [
 		{ host: 80, container: 80 },

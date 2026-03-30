@@ -22,7 +22,7 @@ export const tailscale: ServiceModule = {
 				container_name: 'tailscale',
 				hostname: `\${HOSTNAME:-${config.env.HOSTNAME || 'homeserver'}}`,
 				environment: [
-					'TS_AUTHKEY=${TAILSCALE_AUTHKEY}',
+					'TS_AUTHKEY=${TS_AUTHKEY}',
 					'TS_STATE_DIR=/var/lib/tailscale',
 					'TS_EXTRA_ARGS=--advertise-exit-node'
 				],

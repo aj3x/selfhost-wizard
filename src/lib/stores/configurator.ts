@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import {
 	type ConfiguratorState,
@@ -133,6 +133,28 @@ function createConfiguratorStore() {
 				...state,
 				globalConfig: { ...state.globalConfig, vpnEnv: env }
 			}));
+		},
+
+		/** Get or create a stable secret for a given key */
+		getOrCreateSecret(key: string): string {
+			const state = get({ subscribe });
+			if (state.generatedSecrets[key]) {
+				return state.generatedSecrets[key];
+			}
+			const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+			let password: string;
+			if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+				const array = new Uint8Array(24);
+				crypto.getRandomValues(array);
+				password = Array.from(array, (b) => chars[b % chars.length]).join('');
+			} else {
+				password = Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+			}
+			update((state) => ({
+				...state,
+				generatedSecrets: { ...state.generatedSecrets, [key]: password }
+			}));
+			return password;
 		},
 
 		/** Reset everything */

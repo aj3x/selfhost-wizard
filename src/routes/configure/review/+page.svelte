@@ -22,6 +22,20 @@
 		return ram;
 	});
 
+	let totalStorage = $derived.by(() => {
+		let storage = 0;
+		for (const id of allIds) {
+			const svc = findService(id);
+			if (svc) storage += svc.resourceEstimate.storageGB;
+		}
+		return storage;
+	});
+
+	let hasVpnRouted = $derived(allIds.some((id) => {
+		const svc = findService(id);
+		return svc?.vpnRouted && allIds.includes('gluetun');
+	}));
+
 	function getFileContent(): string {
 		switch (activeTab) {
 			case 'compose': return output.composeYaml;
@@ -58,8 +72,7 @@
 		URL.revokeObjectURL(url);
 	}
 
-	function downloadAll() {
-		// Download each file
+	function getAllFiles(): { name: string; content: string }[] {
 		const files = [
 			{ name: 'docker-compose.yml', content: output.composeYaml },
 			{ name: '.env', content: output.envFile },
@@ -69,15 +82,130 @@
 		if (output.caddyfile) {
 			files.push({ name: 'Caddyfile', content: output.caddyfile });
 		}
+		return files;
+	}
+
+	async function downloadAllAsZip() {
+		const files = getAllFiles();
+
+		// Build a minimal valid ZIP file in-browser (no library needed)
+		const encoder = new TextEncoder();
+		const localFiles: { header: Uint8Array; data: Uint8Array; name: Uint8Array; crc: number }[] = [];
+		let offset = 0;
+
 		for (const file of files) {
-			const blob = new Blob([file.content], { type: 'text/plain' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = file.name;
-			a.click();
-			URL.revokeObjectURL(url);
+			const data = encoder.encode(file.content);
+			const name = encoder.encode(file.name);
+			const crc = crc32(data);
+
+			// Local file header (30 bytes + name length)
+			const header = new Uint8Array(30 + name.length);
+			const hv = new DataView(header.buffer);
+			hv.setUint32(0, 0x04034b50, true); // signature
+			hv.setUint16(4, 20, true); // version needed
+			hv.setUint16(6, 0, true); // flags
+			hv.setUint16(8, 0, true); // compression (store)
+			hv.setUint16(10, 0, true); // mod time
+			hv.setUint16(12, 0, true); // mod date
+			hv.setUint32(14, crc, true); // crc32
+			hv.setUint32(18, data.length, true); // compressed size
+			hv.setUint32(22, data.length, true); // uncompressed size
+			hv.setUint16(26, name.length, true); // name length
+			hv.setUint16(28, 0, true); // extra length
+			header.set(name, 30);
+
+			localFiles.push({ header, data, name, crc });
+			offset += header.length + data.length;
 		}
+
+		// Central directory
+		const centralDir: Uint8Array[] = [];
+		let localOffset = 0;
+		for (const f of localFiles) {
+			const cd = new Uint8Array(46 + f.name.length);
+			const cv = new DataView(cd.buffer);
+			cv.setUint32(0, 0x02014b50, true); // signature
+			cv.setUint16(4, 20, true); // version made by
+			cv.setUint16(6, 20, true); // version needed
+			cv.setUint16(8, 0, true); // flags
+			cv.setUint16(10, 0, true); // compression
+			cv.setUint16(12, 0, true); // mod time
+			cv.setUint16(14, 0, true); // mod date
+			cv.setUint32(16, f.crc, true); // crc32
+			cv.setUint32(20, f.data.length, true); // compressed size
+			cv.setUint32(24, f.data.length, true); // uncompressed size
+			cv.setUint16(28, f.name.length, true); // name length
+			cv.setUint16(30, 0, true); // extra length
+			cv.setUint16(32, 0, true); // comment length
+			cv.setUint16(34, 0, true); // disk number
+			cv.setUint16(36, 0, true); // internal attrs
+			cv.setUint32(38, 0, true); // external attrs
+			cv.setUint32(42, localOffset, true); // offset
+			cd.set(f.name, 46);
+			centralDir.push(cd);
+			localOffset += f.header.length + f.data.length;
+		}
+
+		const cdSize = centralDir.reduce((s, c) => s + c.length, 0);
+
+		// End of central directory
+		const eocd = new Uint8Array(22);
+		const ev = new DataView(eocd.buffer);
+		ev.setUint32(0, 0x06054b50, true); // signature
+		ev.setUint16(4, 0, true); // disk number
+		ev.setUint16(6, 0, true); // cd disk
+		ev.setUint16(8, localFiles.length, true); // entries on disk
+		ev.setUint16(10, localFiles.length, true); // total entries
+		ev.setUint32(12, cdSize, true); // cd size
+		ev.setUint32(16, offset, true); // cd offset
+		ev.setUint16(20, 0, true); // comment length
+
+		// Combine all parts
+		const parts: Uint8Array[] = [];
+		for (const f of localFiles) {
+			parts.push(f.header, f.data);
+		}
+		for (const cd of centralDir) {
+			parts.push(cd);
+		}
+		parts.push(eocd);
+
+		const totalSize = parts.reduce((s, p) => s + p.length, 0);
+		const zip = new Uint8Array(totalSize);
+		let pos = 0;
+		for (const part of parts) {
+			zip.set(part, pos);
+			pos += part.length;
+		}
+
+		const blob = new Blob([zip], { type: 'application/zip' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'selfhost-wizard.zip';
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+
+	// CRC32 lookup table
+	const CRC_TABLE = (() => {
+		const table = new Uint32Array(256);
+		for (let i = 0; i < 256; i++) {
+			let c = i;
+			for (let j = 0; j < 8; j++) {
+				c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+			}
+			table[i] = c;
+		}
+		return table;
+	})();
+
+	function crc32(data: Uint8Array): number {
+		let crc = 0xFFFFFFFF;
+		for (let i = 0; i < data.length; i++) {
+			crc = CRC_TABLE[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+		}
+		return (crc ^ 0xFFFFFFFF) >>> 0;
 	}
 
 	const tabs = $derived.by(() => {
@@ -104,6 +232,13 @@
 		Review your configuration and download the generated files.
 	</p>
 
+	{#if allIds.length === 0}
+		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+			<p class="text-lg font-medium">No services selected</p>
+			<p class="mt-1 text-sm">Go back to select some services to generate your configuration.</p>
+		</div>
+	{:else}
+
 	<!-- Validation errors -->
 	{#if errors.length > 0}
 		<div class="mb-6 rounded-xl border border-(--color-danger)/30 bg-(--color-danger)/5 p-4">
@@ -115,7 +250,7 @@
 	{/if}
 
 	<!-- Summary -->
-	<div class="mb-6 grid gap-4 sm:grid-cols-3">
+	<div class="mb-6 grid gap-4 sm:grid-cols-4">
 		<div class="rounded-xl border border-(--color-border) p-4 text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">{allIds.length}</div>
 			<div class="text-sm text-(--color-text-muted)">Services</div>
@@ -125,6 +260,12 @@
 				{totalRAM >= 1024 ? `${(totalRAM / 1024).toFixed(1)} GB` : `${totalRAM} MB`}
 			</div>
 			<div class="text-sm text-(--color-text-muted)">Estimated RAM</div>
+		</div>
+		<div class="rounded-xl border border-(--color-border) p-4 text-center">
+			<div class="text-2xl font-bold text-(--color-primary)">
+				{totalStorage >= 1 ? `${totalStorage.toFixed(1)} GB` : `${(totalStorage * 1024).toFixed(0)} MB`}
+			</div>
+			<div class="text-sm text-(--color-text-muted)">Config Storage</div>
 		</div>
 		<div class="rounded-xl border border-(--color-border) p-4 text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">{networks.length}</div>
@@ -140,10 +281,19 @@
 				{@const svc = findService(id)}
 				{#if svc}
 					<div class="flex items-center justify-between text-sm">
-						<span>{svc.name}</span>
+						<span>
+							{svc.name}
+							{#if svc.vpnRouted && hasVpnRouted}
+								<span class="ml-1 text-[10px] rounded bg-amber-500/10 px-1.5 py-0.5 text-amber-600">VPN</span>
+							{/if}
+						</span>
 						<span class="font-mono text-xs text-(--color-text-muted)">
 							{#if svc.ports.length > 0}
-								{svc.ports.map((p) => `:${p.host}`).join(', ')}
+								{#if svc.vpnRouted && hasVpnRouted}
+									via gluetun {svc.ports.map((p) => `:${p.host}`).join(', ')}
+								{:else}
+									{svc.ports.map((p) => `:${p.host}`).join(', ')}
+								{/if}
 							{:else}
 								—
 							{/if}
@@ -193,10 +343,12 @@
 	<!-- Download all -->
 	<div class="flex items-center justify-center gap-4">
 		<button
-			onclick={downloadAll}
+			onclick={downloadAllAsZip}
 			class="cursor-pointer rounded-xl bg-(--color-primary) px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-(--color-primary-hover)"
 		>
-			Download All Files
+			Download All as ZIP
 		</button>
 	</div>
+
+	{/if}
 </div>

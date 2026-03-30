@@ -17,6 +17,7 @@ export const jellyseerr: ServiceModule = {
 	],
 	recommends: [],
 	conflicts: ['overseerr'],
+	conflictReason: 'Jellyseerr is a fork of Overseerr with Jellyfin support. Choose Overseerr if you use Plex.',
 	networks: ['media'],
 	ports: [{ host: 5055, container: 5055 }],
 	environment: [
