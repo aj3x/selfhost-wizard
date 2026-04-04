@@ -177,12 +177,17 @@
 					</button>
 				{/each}
 
-				{#if selectedProvider}
-					<div class="mt-4 space-y-3 border-t border-(--color-border) pt-4">
-						<h3 class="text-sm font-medium">
-							{selectedProvider.name} Credentials
-						</h3>
-						{#each selectedProvider.envVars as envVar}
+				   {#if selectedProvider}
+					   <div class="mt-4 space-y-3 border-t border-(--color-border) pt-4">
+						   <h3 class="text-sm font-medium">
+							   {selectedProvider.name} Credentials
+						   </h3>
+						   {#if selectedProvider.id == "custom"}
+							   <p class="text-xs text-(--color-text-muted)">
+								   For custom VPN providers, see the <a href="https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers" target="_blank" class="text-(--color-primary) underline">Gluetun custom VPN setup instructions</a> to determine which credentials and environment variables you need to fill in below.
+							   </p>
+						   {/if}
+						   {#each selectedProvider.envVars as envVar}
 							<div class="flex items-center gap-3">
 								<span class="min-w-[180px] text-sm">{envVar.description || envVar.key}</span>
 								<input
