@@ -7,7 +7,7 @@ export const jellyfin: ServiceModule = {
 	category: 'media-server',
 	skillLevel: 'beginner',
 	requires: [],
-	recommends: ['jellyseerr'],
+	recommends: ['seerr'],
 	conflicts: [],
 	networks: ['media'],
 	ports: [{ host: 8096, container: 8096 }],

@@ -7,7 +7,7 @@ export const plex: ServiceModule = {
 	category: 'media-server',
 	skillLevel: 'beginner',
 	requires: [],
-	recommends: ['overseerr', 'tautulli'],
+	recommends: ['seerr', 'tautulli'],
 	conflicts: [],
 	networks: [],
 	ports: [{ host: 32400, container: 32400 }],

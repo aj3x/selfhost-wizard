@@ -1,13 +1,18 @@
 import type { ServiceModule } from '$lib/types/configurator';
 
-export const overseerr: ServiceModule = {
-	id: 'overseerr',
-	name: 'Overseerr',
-	description: 'Request management for Plex — let household members request content.',
+export const seerr: ServiceModule = {
+	id: 'seerr',
+	name: 'Seerr',
+	description: 'Let household members request movies and shows. Works with Jellyfin and Plex.',
 	category: 'media-management',
 	skillLevel: 'beginner',
 	requires: [
-		{ type: 'all', serviceIds: ['plex'] },
+		{
+			type: 'one_of',
+			serviceIds: ['jellyfin', 'plex'],
+			label: 'a media server',
+			defaultId: 'jellyfin'
+		},
 		{
 			type: 'one_of',
 			serviceIds: ['sonarr', 'radarr'],
@@ -16,8 +21,8 @@ export const overseerr: ServiceModule = {
 		}
 	],
 	recommends: [],
-	conflicts: ['jellyseerr'],
-	conflictReason: 'Overseerr is designed for Plex. Choose Jellyseerr if you use Jellyfin.',
+	conflicts: ['ombi'],
+	conflictReason: 'Seerr has a modern UI and is actively maintained. Ombi is an older alternative with broader integrations.',
 	networks: ['media'],
 	ports: [{ host: 5055, container: 5055 }],
 	environment: [
@@ -28,11 +33,11 @@ export const overseerr: ServiceModule = {
 	resourceEstimate: { ramMB: 256, cpuShares: 256, storageGB: 0.5 },
 	compose() {
 		return {
-			overseerr: {
-				image: 'lscr.io/linuxserver/overseerr:latest',
-				container_name: 'overseerr',
+			seerr: {
+				image: 'fallenbagel/jellyseerr:latest',
+				container_name: 'seerr',
 				environment: ['PUID=${PUID}', 'PGID=${PGID}', 'TZ=${TZ}'],
-				volumes: ['${CONFIG_DIR}/overseerr:/config'],
+				volumes: ['${CONFIG_DIR}/seerr:/app/config'],
 				ports: ['5055:5055'],
 				restart: 'unless-stopped',
 				networks: ['media']

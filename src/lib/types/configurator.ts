@@ -345,7 +345,7 @@ export const PRESETS: Preset[] = [
 		skillLevel: 'intermediate',
 		serviceIds: [
 			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'bazarr',
-			'qbittorrent', 'gluetun', 'jellyseerr', 'tdarr',
+			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
 			'homepage', 'watchtower'
 		]
 	},
@@ -363,7 +363,7 @@ export const PRESETS: Preset[] = [
 		skillLevel: 'advanced',
 		serviceIds: [
 			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'bazarr',
-			'qbittorrent', 'gluetun', 'jellyseerr', 'tdarr',
+			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
 			'immich', 'nextcloud', 'kopia', 'adguard',
 			'authelia', 'caddy', 'uptime-kuma', 'portainer',
 			'vaultwarden', 'paperless', 'homepage', 'watchtower'

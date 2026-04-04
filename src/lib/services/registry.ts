@@ -12,8 +12,8 @@ import { lidarr } from './lidarr';
 import { readarr } from './readarr';
 import { bazarr } from './bazarr';
 import { prowlarr } from './prowlarr';
-import { overseerr } from './overseerr';
-import { jellyseerr } from './jellyseerr';
+import { seerr } from './seerr';
+import { ombi } from './ombi';
 import { tautulli } from './tautulli';
 
 // Download Clients
@@ -68,7 +68,7 @@ const ALL_SERVICES: ServiceModule[] = [
 	// Media Server
 	jellyfin, plex,
 	// Media Management
-	sonarr, radarr, lidarr, readarr, bazarr, prowlarr, overseerr, jellyseerr, tautulli,
+	sonarr, radarr, lidarr, readarr, bazarr, prowlarr, seerr, ombi, tautulli,
 	// Download Clients
 	qbittorrent, transmission, sabnzbd, nzbget,
 	// Media Processing

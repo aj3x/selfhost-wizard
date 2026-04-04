@@ -32,7 +32,7 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 		}
 
 		if (assessment.householdSize > 2) {
-			services.push('jellyseerr'); // request management for families
+			services.push('seerr'); // request management for families
 		}
 	}
 
