@@ -36,35 +36,33 @@
 	</p>
 
 	{#if allIds.length === 0}
-		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+		<div class="card p-8 text-center text-(--color-text-muted)">
 			<p class="text-lg font-medium">No services selected</p>
 			<p class="mt-1 text-sm">Go back to select some services first.</p>
 		</div>
 	{:else}
 
-	<!-- Resolved dependencies -->
 	{#if $configurator.resolvedDependencies.length > 0}
-		<div class="mb-6 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 p-4">
+		<div class="status-banner status-info" role="status">
 			<h2 class="mb-2 text-sm font-semibold text-(--color-primary)">Auto-added Dependencies</h2>
-			<p class="mb-3 text-sm text-(--color-text-muted)">
+			<p class="mb-3 hint">
 				These services were added because other services require them.
 			</p>
-			<div class="flex flex-wrap gap-2">
+			<ul class="pill-group" aria-label="Auto-added dependencies">
 				{#each $configurator.resolvedDependencies as id}
 					{@const svc = findService(id)}
 					{#if svc}
-						<span class="rounded-lg bg-(--color-primary)/10 px-3 py-1.5 text-sm text-(--color-primary)">
+						<li class="rounded-lg bg-(--color-primary)/10 px-3 py-1.5 text-sm text-(--color-primary)">
 							{svc.name}
-						</span>
+						</li>
 					{/if}
 				{/each}
-			</div>
+			</ul>
 		</div>
 	{/if}
 
-	<!-- Remaining unmet dependencies -->
 	{#if unmet.length > 0}
-		<div class="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+		<div class="status-banner status-warning" role="alert">
 			<h2 class="mb-2 text-sm font-semibold text-amber-600">Unmet Dependencies</h2>
 			{#each unmet as dep}
 				{@const svc = findService(dep.serviceId)}
@@ -72,7 +70,7 @@
 					<strong>{svc?.name}</strong> requires
 					{#if dep.rule.type === 'one_of'}
 						{dep.rule.label}:
-						<div class="mt-1 flex flex-wrap gap-2">
+						<div class="mt-1 pill-group">
 							{#each dep.rule.serviceIds as optionId}
 								{@const opt = findService(optionId)}
 								{#if opt}
@@ -83,11 +81,11 @@
 												configurator.setDependencyChoice(`${dep.serviceId}:${dep.rule.label}`, optionId);
 											}
 										}}
-										class="cursor-pointer rounded-lg border border-(--color-border) px-3 py-1 text-sm transition-colors hover:border-(--color-primary) hover:bg-(--color-primary)/5"
+										class="btn-secondary py-1"
 									>
 										{opt.name}
 										{#if dep.rule.type === 'one_of' && dep.rule.defaultId === optionId}
-											<span class="text-xs text-(--color-text-muted)">(recommended)</span>
+											<span class="hint">(recommended)</span>
 										{/if}
 									</button>
 								{/if}
@@ -101,9 +99,8 @@
 		</div>
 	{/if}
 
-	<!-- Conflicts -->
 	{#if conflicts.length > 0}
-		<div class="mb-6 rounded-xl border border-(--color-danger)/30 bg-(--color-danger)/5 p-4">
+		<div class="status-banner status-error" role="alert">
 			<h2 class="mb-2 text-sm font-semibold text-(--color-danger)">Conflicts</h2>
 			{#each conflicts as conflict}
 				{@const a = findService(conflict.serviceA)}
@@ -111,7 +108,7 @@
 				<div class="mb-3 text-sm">
 					<p><strong>{a?.name}</strong> and <strong>{b?.name}</strong> serve the same purpose — pick one:</p>
 					{#if a?.conflictReason || b?.conflictReason}
-						<div class="mt-1 space-y-0.5 text-xs text-(--color-text-muted)">
+						<div class="mt-1 space-y-0.5 hint">
 							{#if a?.conflictReason}<p>{a.name}: {a.conflictReason}</p>{/if}
 							{#if b?.conflictReason}<p>{b.name}: {b.conflictReason}</p>{/if}
 						</div>
@@ -119,13 +116,13 @@
 					<div class="mt-2 flex gap-2">
 						<button
 							onclick={() => removeService(conflict.serviceB)}
-							class="cursor-pointer rounded-lg border border-(--color-border) px-3 py-1.5 text-sm transition-colors hover:border-(--color-primary) hover:bg-(--color-primary)/5"
+							class="btn-secondary"
 						>
 							Keep {a?.name}
 						</button>
 						<button
 							onclick={() => removeService(conflict.serviceA)}
-							class="cursor-pointer rounded-lg border border-(--color-border) px-3 py-1.5 text-sm transition-colors hover:border-(--color-primary) hover:bg-(--color-primary)/5"
+							class="btn-secondary"
 						>
 							Keep {b?.name}
 						</button>
@@ -135,9 +132,8 @@
 		</div>
 	{/if}
 
-	<!-- Port conflicts -->
 	{#if portConflicts.length > 0}
-		<div class="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+		<div class="status-banner status-warning" role="alert">
 			<h2 class="mb-2 text-sm font-semibold text-amber-600">Port Conflicts</h2>
 			{#each portConflicts as pc}
 				<p class="text-sm">
@@ -149,51 +145,48 @@
 		</div>
 	{/if}
 
-	<!-- All good -->
 	{#if !hasIssues && portConflicts.length === 0}
-		<div class="mb-6 rounded-xl border border-green-500/30 bg-green-500/5 p-4 text-center">
+		<div class="status-banner status-success text-center" role="status">
 			<p class="text-sm font-medium text-green-600">All dependencies satisfied. No conflicts detected.</p>
 		</div>
 	{/if}
 
-	<!-- Recommendations -->
 	{#if recommendations.length > 0}
-		<div class="mb-6 rounded-xl border border-(--color-border) p-4">
-			<h2 class="mb-2 text-sm font-semibold">Recommended Additions</h2>
-			<p class="mb-3 text-xs text-(--color-text-muted)">
+		<section class="card mb-6" aria-labelledby="recommendations-heading">
+			<h2 id="recommendations-heading" class="mb-2 text-sm font-semibold">Recommended Additions</h2>
+			<p class="mb-3 hint">
 				These services work well with your current selection.
 			</p>
-			<div class="flex flex-wrap gap-2">
+			<div class="pill-group">
 				{#each recommendations as rec}
 					<button
 						onclick={() => addRecommended(rec.recommendedId)}
-						class="cursor-pointer rounded-lg border border-dashed border-(--color-border) px-3 py-1.5 text-sm transition-colors hover:border-(--color-primary) hover:bg-(--color-primary)/5"
+						class="btn-secondary border-dashed"
 					>
 						+ {rec.name}
 					</button>
 				{/each}
 			</div>
-		</div>
+		</section>
 	{/if}
 
-	<!-- Summary -->
-	<div class="rounded-xl border border-(--color-border) p-4">
-		<h2 class="mb-3 text-sm font-semibold">Selected Services ({allIds.length})</h2>
-		<div class="flex flex-wrap gap-2">
+	<section class="card" aria-labelledby="selected-heading">
+		<h2 id="selected-heading" class="mb-3 text-sm font-semibold">Selected Services ({allIds.length})</h2>
+		<ul class="pill-group" aria-label="Selected services">
 			{#each allIds as id}
 				{@const svc = findService(id)}
 				{@const isResolved = $configurator.resolvedDependencies.includes(id)}
 				{#if svc}
-					<span class="rounded-lg px-3 py-1.5 text-sm
+					<li class="rounded-lg px-3 py-1.5 text-sm
 						{isResolved
 							? 'bg-(--color-primary)/10 text-(--color-primary)'
 							: 'bg-(--color-surface-alt) text-(--color-text)'}">
 						{svc.name}
-					</span>
+					</li>
 				{/if}
 			{/each}
-		</div>
-	</div>
+		</ul>
+	</section>
 
 	{/if}
 </div>

@@ -19,13 +19,15 @@
 	);
 </script>
 
-<div class="mb-6">
-	<h3 class="mb-2 text-sm font-medium text-(--color-text-muted)">Quick Start Presets</h3>
-	<div class="flex flex-wrap gap-2">
+<section class="mb-6" aria-labelledby="presets-heading">
+	<h3 id="presets-heading" class="mb-2 text-sm font-medium text-(--color-text-muted)">Quick Start Presets</h3>
+	<div class="pill-group" role="group" aria-label="Preset options">
 		{#each visiblePresets as preset}
 			<button
 				onclick={() => onApply(preset)}
+				aria-pressed={activePreset === preset.id}
 				class="cursor-pointer rounded-lg border px-3 py-2 text-left text-sm transition-colors
+					focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
 					{activePreset === preset.id
 						? 'border-(--color-primary) bg-(--color-primary)/10 text-(--color-primary)'
 						: 'border-(--color-border) hover:border-(--color-primary)/40'}"
@@ -35,4 +37,4 @@
 			</button>
 		{/each}
 	</div>
-</div>
+</section>

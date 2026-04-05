@@ -22,17 +22,18 @@
 
 <button
 	onclick={() => onToggle(service.id)}
+	aria-pressed={selected}
 	class="group flex w-full cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-all
+		focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
 		{selected
 			? 'border-(--color-primary) bg-(--color-primary)/5'
 			: 'border-(--color-border) hover:border-(--color-primary)/40'}
 		{dimmed ? 'opacity-50' : ''}"
 >
-	<!-- Checkbox -->
-	<div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors
+	<div aria-hidden="true" class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors
 		{selected ? 'border-(--color-primary) bg-(--color-primary)' : 'border-(--color-border)'}">
 		{#if selected}
-			<svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+			<svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 			</svg>
 		{/if}

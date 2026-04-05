@@ -233,15 +233,14 @@
 	</p>
 
 	{#if allIds.length === 0}
-		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+		<div class="card p-8 text-center text-(--color-text-muted)">
 			<p class="text-lg font-medium">No services selected</p>
 			<p class="mt-1 text-sm">Go back to select some services to generate your configuration.</p>
 		</div>
 	{:else}
 
-	<!-- Validation errors -->
 	{#if errors.length > 0}
-		<div class="mb-6 rounded-xl border border-(--color-danger)/30 bg-(--color-danger)/5 p-4">
+		<div class="status-banner status-error" role="alert">
 			<h2 class="mb-2 text-sm font-semibold text-(--color-danger)">Issues to resolve</h2>
 			{#each errors as error}
 				<p class="text-sm">{error.message}</p>
@@ -249,38 +248,36 @@
 		</div>
 	{/if}
 
-	<!-- Summary -->
-	<div class="mb-6 grid gap-4 sm:grid-cols-4">
-		<div class="rounded-xl border border-(--color-border) p-4 text-center">
+	<section class="mb-6 grid gap-4 sm:grid-cols-4" aria-label="Configuration summary">
+		<div class="card text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">{allIds.length}</div>
-			<div class="text-sm text-(--color-text-muted)">Services</div>
+			<div class="hint">Services</div>
 		</div>
-		<div class="rounded-xl border border-(--color-border) p-4 text-center">
+		<div class="card text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">
 				{totalRAM >= 1024 ? `${(totalRAM / 1024).toFixed(1)} GB` : `${totalRAM} MB`}
 			</div>
-			<div class="text-sm text-(--color-text-muted)">Estimated RAM</div>
+			<div class="hint">Estimated RAM</div>
 		</div>
-		<div class="rounded-xl border border-(--color-border) p-4 text-center">
+		<div class="card text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">
 				{totalStorage >= 1 ? `${totalStorage.toFixed(1)} GB` : `${(totalStorage * 1024).toFixed(0)} MB`}
 			</div>
-			<div class="text-sm text-(--color-text-muted)">Config Storage</div>
+			<div class="hint">Config Storage</div>
 		</div>
-		<div class="rounded-xl border border-(--color-border) p-4 text-center">
+		<div class="card text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">{networks.length}</div>
-			<div class="text-sm text-(--color-text-muted)">Networks</div>
+			<div class="hint">Networks</div>
 		</div>
-	</div>
+	</section>
 
-	<!-- Service list -->
-	<div class="mb-6 rounded-xl border border-(--color-border) p-4">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted)">Services & Ports</h2>
-		<div class="space-y-1">
+	<section class="card mb-6" aria-labelledby="services-ports-heading">
+		<h2 id="services-ports-heading" class="section-heading">Services & Ports</h2>
+		<ul class="space-y-1" aria-label="Services and their port mappings">
 			{#each allIds as id}
 				{@const svc = findService(id)}
 				{#if svc}
-					<div class="flex items-center justify-between text-sm">
+					<li class="flex items-center justify-between text-sm">
 						<span>
 							{svc.name}
 							{#if svc.vpnRouted && hasVpnRouted}
@@ -298,19 +295,23 @@
 								—
 							{/if}
 						</span>
-					</div>
+					</li>
 				{/if}
 			{/each}
-		</div>
-	</div>
+		</ul>
+	</section>
 
-	<!-- File tabs -->
-	<div class="mb-6 rounded-xl border border-(--color-border)">
-		<div class="flex border-b border-(--color-border) overflow-x-auto">
+	<section class="mb-6 card p-0" aria-label="Generated files">
+		<div class="flex border-b border-(--color-border) overflow-x-auto" role="tablist" aria-label="File tabs">
 			{#each tabs as tab}
 				<button
+					id="tab-{tab.id}"
 					onclick={() => (activeTab = tab.id)}
+					role="tab"
+					aria-selected={activeTab === tab.id}
+					aria-controls="tabpanel-files"
 					class="cursor-pointer whitespace-nowrap px-4 py-2 text-sm transition-colors
+						focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(--color-primary)
 						{activeTab === tab.id
 							? 'border-b-2 border-(--color-primary) font-medium text-(--color-primary)'
 							: 'text-(--color-text-muted) hover:text-(--color-text)'}"
@@ -320,32 +321,23 @@
 			{/each}
 		</div>
 
-		<!-- File actions -->
 		<div class="flex items-center justify-end gap-2 border-b border-(--color-border) px-4 py-2">
-			<button
-				onclick={copyToClipboard}
-				class="cursor-pointer rounded border border-(--color-border) px-3 py-1 text-xs transition-colors hover:bg-(--color-surface-alt)"
-			>
-				{copyStatus || 'Copy'}
+			<span class="hint" aria-live="polite">{copyStatus}</span>
+			<button onclick={copyToClipboard} class="btn-small">
+				Copy
 			</button>
-			<button
-				onclick={downloadFile}
-				class="cursor-pointer rounded border border-(--color-border) px-3 py-1 text-xs transition-colors hover:bg-(--color-surface-alt)"
-			>
+			<button onclick={downloadFile} class="btn-small">
 				Download
 			</button>
 		</div>
 
-		<!-- File content -->
-		<pre class="max-h-[500px] overflow-auto p-4 font-mono text-xs leading-relaxed">{getFileContent()}</pre>
-	</div>
+		<div id="tabpanel-files" role="tabpanel" aria-labelledby="tab-{activeTab}">
+			<pre class="max-h-[500px] overflow-auto p-4 font-mono text-xs leading-relaxed">{getFileContent()}</pre>
+		</div>
+	</section>
 
-	<!-- Download all -->
 	<div class="flex items-center justify-center gap-4">
-		<button
-			onclick={downloadAllAsZip}
-			class="cursor-pointer rounded-xl bg-(--color-primary) px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-(--color-primary-hover)"
-		>
+		<button onclick={downloadAllAsZip} class="btn-primary rounded-xl px-8 py-3 font-semibold">
 			Download All as ZIP
 		</button>
 	</div>

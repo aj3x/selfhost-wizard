@@ -70,111 +70,114 @@
 	</p>
 
 	{#if allIds.length === 0}
-		<div class="rounded-xl border border-(--color-border) p-8 text-center text-(--color-text-muted)">
+		<div class="card p-8 text-center text-(--color-text-muted)">
 			<p class="text-lg font-medium">No services selected</p>
 			<p class="mt-1 text-sm">Go back to select some services first.</p>
 		</div>
 	{:else}
 
-	<!-- Path inputs -->
-	<div class="mb-6 rounded-xl border border-(--color-border) p-4">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted)">Base Paths</h2>
+	<fieldset class="card mb-6">
+		<legend class="section-heading">Base Paths</legend>
 		<div class="space-y-3">
-			<div class="flex items-center gap-3">
-				<span class="min-w-[120px] text-sm font-medium">Base Directory</span>
+			<div class="field-row">
+				<label for="path-base" class="min-w-[120px] text-sm font-medium">Base Directory</label>
 				<input
+					id="path-base"
 					type="text"
 					value={gc.baseDir}
 					oninput={(e) => configurator.updateGlobalConfig({ baseDir: e.currentTarget.value })}
-					class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+					class="input-mono"
 				/>
 			</div>
-			<div class="flex items-center gap-3">
-				<span class="min-w-[120px] text-sm">Config</span>
+			<div class="field-row">
+				<label for="path-config" class="min-w-[120px] text-sm">Config</label>
 				<input
+					id="path-config"
 					type="text"
 					value={gc.configDir}
 					oninput={(e) => configurator.updateGlobalConfig({ configDir: e.currentTarget.value })}
-					class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+					class="input-mono"
 				/>
 			</div>
 			{#if hasMedia}
-				<div class="flex items-center gap-3">
-					<span class="min-w-[120px] text-sm">Media</span>
+				<div class="field-row">
+					<label for="path-media" class="min-w-[120px] text-sm">Media</label>
 					<input
+						id="path-media"
 						type="text"
 						value={gc.mediaDir}
 						oninput={(e) => configurator.updateGlobalConfig({ mediaDir: e.currentTarget.value })}
-						class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+						class="input-mono"
 					/>
 				</div>
 			{/if}
 			{#if hasPhotos}
-				<div class="flex items-center gap-3">
-					<span class="min-w-[120px] text-sm">Photos</span>
+				<div class="field-row">
+					<label for="path-photos" class="min-w-[120px] text-sm">Photos</label>
 					<input
+						id="path-photos"
 						type="text"
 						value={gc.photoDir}
 						oninput={(e) => configurator.updateGlobalConfig({ photoDir: e.currentTarget.value })}
-						class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+						class="input-mono"
 					/>
 				</div>
 			{/if}
 			{#if hasFiles}
-				<div class="flex items-center gap-3">
-					<span class="min-w-[120px] text-sm">Files</span>
+				<div class="field-row">
+					<label for="path-files" class="min-w-[120px] text-sm">Files</label>
 					<input
+						id="path-files"
 						type="text"
 						value={gc.filesDir}
 						oninput={(e) => configurator.updateGlobalConfig({ filesDir: e.currentTarget.value })}
-						class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+						class="input-mono"
 					/>
 				</div>
 			{/if}
 			{#if hasBackup}
-				<div class="flex items-center gap-3">
-					<span class="min-w-[120px] text-sm">Backups</span>
+				<div class="field-row">
+					<label for="path-backups" class="min-w-[120px] text-sm">Backups</label>
 					<input
+						id="path-backups"
 						type="text"
 						value={gc.backupDir}
 						oninput={(e) => configurator.updateGlobalConfig({ backupDir: e.currentTarget.value })}
-						class="flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono text-sm"
+						class="input-mono"
 					/>
 				</div>
 			{/if}
 		</div>
-		<p class="mt-3 text-xs text-(--color-text-muted)">
+		<p class="mt-3 hint">
 			Tip: Put configs on your SSD and media on your HDD for best performance.
 			Use <code class="rounded bg-(--color-surface-alt) px-1">${'{BASE_DIR}'}</code> to reference the base path.
 		</p>
-	</div>
+	</fieldset>
 
-	<!-- Directory tree preview -->
-	<div class="mb-6 rounded-xl border border-(--color-border) p-4">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted)">Directory Preview</h2>
-		<div class="rounded-lg bg-(--color-surface-alt) p-4 font-mono text-sm">
+	<section class="card mb-6" aria-labelledby="dir-preview-heading">
+		<h2 id="dir-preview-heading" class="section-heading">Directory Preview</h2>
+		<div class="rounded-lg bg-(--color-surface-alt) p-4 font-mono text-sm" role="img" aria-label="Directory tree structure">
 			{#each dirTree as dir}
 				<div style="padding-left: {dir.indent * 1.5}rem" class="leading-relaxed">
 					{#if dir.indent === 0}
 						<span class="font-bold">{dir.label}/</span>
 					{:else}
-						<span class="text-(--color-text-muted)">├── </span>{dir.label}
+						<span class="text-(--color-text-muted)" aria-hidden="true">├── </span>{dir.label}
 					{/if}
 				</div>
 			{/each}
 		</div>
-	</div>
+	</section>
 
-	<!-- Media path explanation -->
 	{#if hasMedia}
-		<div class="rounded-xl border border-(--color-border) bg-(--color-surface-alt)/50 p-4">
-			<h3 class="mb-1 text-sm font-semibold">Why a unified media path?</h3>
-			<p class="text-xs text-(--color-text-muted)">
+		<section class="card bg-(--color-surface-alt)/50" aria-labelledby="media-path-heading">
+			<h3 id="media-path-heading" class="mb-1 text-sm font-semibold">Why a unified media path?</h3>
+			<p class="hint">
 				The *arr apps and download clients share a common <code class="rounded bg-(--color-surface-alt) px-1">/media</code>
 				parent so completed downloads can be hardlinked (instant, no extra disk space) instead of copied.
 				This is critical for efficient storage use.
 			</p>
-		</div>
+		</section>
 	{/if}
 
 	{/if}

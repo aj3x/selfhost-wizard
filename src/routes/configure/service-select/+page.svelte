@@ -59,21 +59,19 @@
 
 	<PresetBar {skillLevel} activePreset={$configurator.activePreset} onApply={applyPreset} />
 
-	<!-- Stats bar -->
 	{#if totalSelected > 0}
-		<div class="mb-6 flex items-center gap-4 rounded-lg bg-(--color-surface-alt) px-4 py-2 text-sm">
+		<div class="mb-6 flex items-center gap-4 rounded-lg bg-(--color-surface-alt) px-4 py-2 text-sm" role="status" aria-live="polite">
 			<span><strong>{totalSelected}</strong> services selected</span>
-			<span class="text-(--color-text-muted)">|</span>
+			<span class="text-(--color-text-muted)" aria-hidden="true">|</span>
 			<span>~{totalRAM >= 1024 ? `${(totalRAM / 1024).toFixed(1)} GB` : `${totalRAM} MB`} RAM</span>
-			<span class="text-(--color-text-muted)">|</span>
+			<span class="text-(--color-text-muted)" aria-hidden="true">|</span>
 			<span>~{totalStorage.toFixed(1)} GB config storage</span>
 		</div>
 	{/if}
 
-	<!-- Category groups -->
 	{#each categories as group}
-		<div class="mb-6">
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted)">
+		<section class="mb-6" aria-label={group.label}>
+			<h2 class="section-heading">
 				{group.label}
 			</h2>
 			<div class="grid gap-2 sm:grid-cols-2">
@@ -86,6 +84,6 @@
 					/>
 				{/each}
 			</div>
-		</div>
+		</section>
 	{/each}
 </div>

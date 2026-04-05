@@ -22,3 +22,89 @@
 		--color-text-muted: #94a3b8;
 	}
 }
+
+@layer components {
+	/* Card — bordered section container */
+	.card {
+		@apply rounded-xl border border-(--color-border) p-4;
+	}
+
+	/* Section heading — uppercase muted label */
+	.section-heading {
+		@apply mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-text-muted);
+	}
+
+	/* Form field row — label + input side by side */
+	.field-row {
+		@apply flex items-center gap-3;
+	}
+
+	/* Text input */
+	.input {
+		@apply flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 text-sm
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary);
+	}
+
+	/* Monospace text input */
+	.input-mono {
+		@apply flex-1 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 py-1.5 text-sm font-mono
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary);
+	}
+
+	/* Field label */
+	.field-label {
+		@apply min-w-[140px] text-sm;
+	}
+
+	/* Secondary button — bordered with hover */
+	.btn-secondary {
+		@apply cursor-pointer rounded-lg border border-(--color-border) px-3 py-1.5 text-sm
+			transition-colors hover:border-(--color-primary) hover:bg-(--color-primary)/5
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary);
+	}
+
+	/* Primary button */
+	.btn-primary {
+		@apply cursor-pointer rounded-lg bg-(--color-primary) px-6 py-2.5 text-sm font-medium text-white
+			transition-colors hover:bg-(--color-primary-hover)
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white;
+	}
+
+	/* Small button (toolbar) */
+	.btn-small {
+		@apply cursor-pointer rounded border border-(--color-border) px-3 py-1 text-xs
+			transition-colors hover:bg-(--color-surface-alt)
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary);
+	}
+
+	/* Status banner — colored border + background (use with status-info, status-warning, etc.) */
+	.status-banner {
+		@apply mb-6 rounded-xl border p-4;
+	}
+
+	.status-info {
+		@apply border-(--color-primary)/30 bg-(--color-primary)/5;
+	}
+
+	.status-warning {
+		@apply border-amber-500/30 bg-amber-500/5;
+	}
+
+	.status-error {
+		@apply border-(--color-danger)/30 bg-(--color-danger)/5;
+	}
+
+	.status-success {
+		@apply border-green-500/30 bg-green-500/5;
+	}
+
+	/* Pill container */
+	.pill-group {
+		@apply flex flex-wrap gap-2;
+	}
+
+	/* Muted helper text */
+	.hint {
+		@apply text-xs text-(--color-text-muted);
+	}
+}

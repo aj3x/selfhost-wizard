@@ -29,87 +29,85 @@
 	}
 
 	function goBack() {
-		if (!isFirst) {
-			goto(CONFIGURATOR_STEPS[currentIndex - 1].path);
-		}
+		if (!isFirst) goto(CONFIGURATOR_STEPS[currentIndex - 1].path);
 	}
 
 	function goNext() {
-		if (!isLast && canReachStep(currentIndex + 1)) {
-			goto(CONFIGURATOR_STEPS[currentIndex + 1].path);
-		}
+		if (!isLast && canReachStep(currentIndex + 1)) goto(CONFIGURATOR_STEPS[currentIndex + 1].path);
 	}
 
 	function goToStep(index: number) {
-		if (canReachStep(index)) {
-			goto(CONFIGURATOR_STEPS[index].path);
-		}
+		if (canReachStep(index)) goto(CONFIGURATOR_STEPS[index].path);
 	}
 </script>
 
 <div class="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6">
-	<!-- Top bar -->
-	<div class="mb-2 flex items-center justify-between">
+	<header class="mb-2 flex items-center justify-between">
 		<span class="text-sm text-(--color-text-muted)">
 			Step {currentIndex + 1} of {CONFIGURATOR_STEPS.length}
 		</span>
-		<span class="text-sm font-medium">
+		<span class="text-sm font-medium" aria-live="polite">
 			{currentIndex >= 0 ? CONFIGURATOR_STEPS[currentIndex].label : ''}
 		</span>
-	</div>
+	</header>
 
-	<div class="mb-6 h-2 w-full overflow-hidden rounded-full bg-(--color-border)">
+	<div class="mb-6 h-2 w-full overflow-hidden rounded-full bg-(--color-border)" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Configurator progress">
 		<div
 			class="h-full rounded-full bg-(--color-primary) transition-all duration-300"
 			style="width: {progress}%"
 		></div>
 	</div>
 
-	<!-- Step indicators -->
-	<div class="mb-6 flex gap-1">
-		{#each CONFIGURATOR_STEPS as step, i}
-			{@const reachable = canReachStep(i)}
-			<button
-				onclick={() => goToStep(i)}
-				disabled={!reachable}
-				class="flex-1 rounded px-1 py-1.5 text-center text-xs transition-colors
-					{i === currentIndex
-					? 'bg-(--color-primary) text-white font-medium'
-					: reachable && i < currentIndex
-						? 'bg-(--color-primary)/10 text-(--color-primary) cursor-pointer hover:bg-(--color-primary)/20'
-						: 'bg-(--color-surface-alt) text-(--color-text-muted) cursor-default opacity-50'}"
-			>
-				{step.shortLabel}
-			</button>
-		{/each}
-	</div>
+	<nav aria-label="Configurator steps" class="mb-6">
+		<ol class="flex gap-1">
+			{#each CONFIGURATOR_STEPS as step, i}
+				{@const reachable = canReachStep(i)}
+				<li class="flex-1">
+					<button
+						onclick={() => goToStep(i)}
+						disabled={!reachable}
+						aria-current={i === currentIndex ? 'step' : undefined}
+						class="w-full rounded px-1 py-1.5 text-center text-xs transition-colors
+							focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
+							{i === currentIndex
+							? 'bg-(--color-primary) text-white font-medium'
+							: reachable && i < currentIndex
+								? 'bg-(--color-primary)/10 text-(--color-primary) cursor-pointer hover:bg-(--color-primary)/20'
+								: 'bg-(--color-surface-alt) text-(--color-text-muted) cursor-default opacity-50'}"
+					>
+						{step.shortLabel}
+					</button>
+				</li>
+			{/each}
+		</ol>
+	</nav>
 
-	<!-- Content -->
-	<div class="flex-1">
+	<main class="flex-1">
 		{@render children()}
-	</div>
+	</main>
 
-	<!-- Navigation -->
-	<div class="mt-8 flex items-center justify-between border-t border-(--color-border) pt-4">
+	<footer class="mt-8 flex items-center justify-between border-t border-(--color-border) pt-4">
 		<button
 			onclick={goBack}
 			disabled={isFirst}
-			class="cursor-pointer rounded-lg px-6 py-2.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-(--color-surface-alt) disabled:cursor-default disabled:opacity-40"
+			aria-label="Go to previous step"
+			class="cursor-pointer rounded-lg px-6 py-2.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-(--color-surface-alt) disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)"
 		>
 			&larr; Back
 		</button>
 
 		{#if isLast}
-			<span class="text-xs text-(--color-text-muted)">Review your configuration below</span>
+			<span class="hint">Review your configuration below</span>
 		{:else if !canReachStep(currentIndex + 1)}
-			<span class="text-xs text-(--color-text-muted)">Select at least one service to continue</span>
+			<span class="hint" role="status">Select at least one service to continue</span>
 		{:else}
 			<button
 				onclick={goNext}
-				class="cursor-pointer rounded-lg bg-(--color-primary) px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover)"
+				aria-label="Go to next step"
+				class="btn-primary"
 			>
 				Next &rarr;
 			</button>
 		{/if}
-	</div>
+	</footer>
 </div>
