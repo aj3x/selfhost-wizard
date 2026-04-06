@@ -334,7 +334,7 @@ export const PRESETS: Preset[] = [
 		description: 'Stream your own movies and TV shows with automated downloads.',
 		skillLevel: 'beginner',
 		serviceIds: [
-			'jellyfin', 'sonarr', 'radarr', 'prowlarr',
+			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'seerr',
 			'qbittorrent', 'gluetun', 'homepage'
 		]
 	},

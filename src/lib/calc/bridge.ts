@@ -13,6 +13,7 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 	if (assessment.wantsMedia) {
 		services.push('jellyfin'); // default media server (free, no account needed)
 		services.push('sonarr', 'radarr', 'prowlarr');
+		services.push('seerr'); // media requests
 
 		if (assessment.automationLevel === 'full' || assessment.automationLevel === 'semi') {
 			services.push('qbittorrent');
@@ -30,8 +31,6 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 		if (assessment.wantsMusic) {
 			services.push('lidarr');
 		}
-
-		services.push('seerr');
 	}
 
 	// Photos
