@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { assessment } from '$lib/stores/assessment';
 	import { LOCATIONS } from '$lib/types/assessment';
+	import { STREAM_1080P_MBPS, STREAM_4K_MBPS } from '$lib/types/configurator';
 	import QuestionGroup from '$lib/components/wizard/QuestionGroup.svelte';
 	import SingleSelect from '$lib/components/wizard/SingleSelect.svelte';
 	import NumberInput from '$lib/components/wizard/NumberInput.svelte';
@@ -9,7 +10,10 @@
 	import Alert from '$lib/components/shared/Alert.svelte';
 
 	let isBeginner = $derived($assessment.skillLevel === 'beginner');
-	let minUploadForHousehold = $derived(Math.max(10, $assessment.householdSize * 5));
+
+	// Streaming bandwidth requirements (configurable constants)
+	let min1080p = $derived(Math.max(STREAM_4K_MBPS, $assessment.householdSize * STREAM_1080P_MBPS));
+	let min4k = $derived($assessment.householdSize * STREAM_4K_MBPS);
 
 	function setLocation(key: string) {
 		const loc = LOCATIONS[key];
@@ -74,7 +78,7 @@
 	/>
 </QuestionGroup>
 
-<QuestionGroup label="Where are you located?" description={isBeginner ? 'This sets your electricity rate and currency. Pick the closest match.' : undefined}>
+<QuestionGroup label="Where are you located?" description={isBeginner ? 'This sets your currency and default electricity rate. Pick the closest match.' : undefined}>
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 		{#each Object.entries(LOCATIONS) as [key, loc]}
 			<button
@@ -91,23 +95,21 @@
 	</div>
 </QuestionGroup>
 
-{#if $assessment.skillLevel !== 'beginner'}
-	<QuestionGroup label="Electricity rate">
-		<div class="flex items-center gap-3">
-			<span class="text-sm text-(--color-text-muted)">
-				{LOCATIONS[$assessment.locationKey]?.currency ?? 'USD'}
-			</span>
-			<SliderInput
-				bind:value={$assessment.electricityRate}
-				min={0.05}
-				max={0.60}
-				step={0.01}
-				suffix="/kWh"
-			/>
-			<Tooltip text="Your cost per kilowatt-hour. Check your electricity bill or use the regional default." />
-		</div>
-	</QuestionGroup>
-{/if}
+<QuestionGroup label="Electricity rate" description={isBeginner ? "Pre-filled from your location. Adjust if you know your actual rate — check your electricity bill." : "Adjust to match your actual rate if different from the regional default."}>
+	<div class="flex items-center gap-3">
+		<span class="text-sm text-(--color-text-muted)">
+			{LOCATIONS[$assessment.locationKey]?.currency ?? 'USD'}
+		</span>
+		<SliderInput
+			bind:value={$assessment.electricityRate}
+			min={0.05}
+			max={0.60}
+			step={0.01}
+			suffix="/kWh"
+		/>
+		<Tooltip text="Your cost per kilowatt-hour. This was set from your location above but you can adjust it." />
+	</div>
+</QuestionGroup>
 
 <QuestionGroup
 	label="Internet speeds"
@@ -125,10 +127,20 @@
 			<NumberInput id="uploadSpeed" bind:value={$assessment.uploadSpeed} min={1} max={10000} suffix="Mbps" />
 		</div>
 	</div>
-	{#if $assessment.uploadSpeed < minUploadForHousehold}
+	{#if $assessment.uploadSpeed < min1080p}
 		<Alert type="warning">
-			Your upload speed ({$assessment.uploadSpeed} Mbps) is low for a household of {$assessment.householdSize}.
-			Remote streaming and photo backup sync will be slow. You'd want at least {minUploadForHousehold} Mbps for {$assessment.householdSize} user{$assessment.householdSize > 1 ? 's' : ''}.
+			Your upload speed ({$assessment.uploadSpeed} Mbps) may not be sufficient for {$assessment.householdSize}
+			{$assessment.householdSize > 1 ? 'people' : 'person'} to stream remotely at 1080p (~{STREAM_1080P_MBPS} Mbps per stream, {min1080p} Mbps needed).
+			This is based on all {$assessment.householdSize} user{$assessment.householdSize > 1 ? 's' : ''} streaming at once.
+			You should consider a remote hosted server (like Hetzner or OVH) instead of hosting from home for remote access.
+		</Alert>
+	{:else if $assessment.uploadSpeed < min4k}
+		<Alert type="info">
+			Your upload speed ({$assessment.uploadSpeed} Mbps) supports 1080p streaming for
+			{$assessment.householdSize} {$assessment.householdSize > 1 ? 'people' : 'person'} (~{STREAM_1080P_MBPS} Mbps each),
+			but not 4K (~{STREAM_4K_MBPS} Mbps per stream, {min4k} Mbps needed).
+			This is based on all {$assessment.householdSize} user{$assessment.householdSize > 1 ? 's' : ''} streaming at once.
+			You can lower the remote streaming resolution, or consider a remote hosted server for 4K quality.
 		</Alert>
 	{/if}
 </QuestionGroup>

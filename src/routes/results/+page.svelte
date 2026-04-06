@@ -4,6 +4,7 @@
 	import { defaults } from '$lib/stores/defaults';
 	import { configurator } from '$lib/stores/configurator';
 	import { CURRENCY_SYMBOLS } from '$lib/types/assessment';
+	import { STREAM_1080P_MBPS, STREAM_4K_MBPS } from '$lib/types/configurator';
 	import { estimateStorage } from '$lib/calc/storage';
 	import { calcElectricityCost, estimateWattage } from '$lib/calc/electricity';
 	import { estimateHardwareCost } from '$lib/calc/hardware';
@@ -36,8 +37,9 @@
 	);
 	let recommendation = $derived(generateRecommendation($assessment, monthlySaas, breakEven));
 
-	let minUploadForStreaming = $derived(Math.max(10, $assessment.concurrentStreams * 8));
-	let maxRemoteStreams = $derived(Math.floor($assessment.uploadSpeed / 5));
+	let streamers = $derived(Math.max($assessment.householdSize, $assessment.concurrentStreams));
+	let min1080p = $derived(Math.max(STREAM_4K_MBPS, streamers * STREAM_1080P_MBPS));
+	let min4k = $derived(streamers * STREAM_4K_MBPS);
 
 	let monthlySavings = $derived(monthlySaas - monthlySelfHosted);
 	let vpnCost = $derived(
@@ -380,19 +382,24 @@
 		</div>
 	{/if}
 
-	{#if $assessment.uploadSpeed < minUploadForStreaming && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
+	{#if $assessment.uploadSpeed < min1080p && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
 		<div class="mb-8 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-6">
 			<h3 class="mb-2 text-lg font-semibold">Bandwidth Warning</h3>
 			<p class="text-sm text-(--color-text-muted)">
-				Your upload speed ({$assessment.uploadSpeed} Mbps) may struggle with {$assessment.concurrentStreams} concurrent remote stream{$assessment.concurrentStreams > 1 ? 's' : ''}.
-				{#if isBeginner}
-					This means watching media from outside your home could buffer or have poor quality.
-					You'd want at least {minUploadForStreaming} Mbps. Consider cloud-hosted self-hosting (like Hetzner) for reliable remote access, or
-					stick to local-only use.
-				{:else}
-					At {$assessment.uploadSpeed} Mbps, you can support ~{maxRemoteStreams} simultaneous 1080p remote stream{maxRemoteStreams !== 1 ? 's' : ''}, but you want {$assessment.concurrentStreams}.
-					Consider Hetzner/OVH dedicated servers for remote-heavy use cases.
-				{/if}
+				Your upload speed ({$assessment.uploadSpeed} Mbps) may not be sufficient for {streamers}
+				{streamers > 1 ? 'people' : 'person'} to stream remotely at 1080p (~{STREAM_1080P_MBPS} Mbps per stream, {min1080p} Mbps needed).
+				This is based on all {streamers} user{streamers > 1 ? 's' : ''} streaming at once.
+				You should consider a remote hosted server (like Hetzner or OVH, ~$10-30/month) instead of hosting from home for remote access.
+			</p>
+		</div>
+	{:else if $assessment.uploadSpeed < min4k && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
+		<div class="mb-8 rounded-xl border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-6">
+			<h3 class="mb-2 text-lg font-semibold">Bandwidth Note</h3>
+			<p class="text-sm text-(--color-text-muted)">
+				Your upload speed ({$assessment.uploadSpeed} Mbps) supports 1080p streaming for
+				{streamers} {streamers > 1 ? 'people' : 'person'} (~{STREAM_1080P_MBPS} Mbps each), but not 4K (~{STREAM_4K_MBPS} Mbps per stream, {min4k} Mbps needed).
+				This is based on all {streamers} user{streamers > 1 ? 's' : ''} streaming at once.
+				You can lower the remote streaming resolution, or consider a remote hosted server for 4K quality.
 			</p>
 		</div>
 	{/if}

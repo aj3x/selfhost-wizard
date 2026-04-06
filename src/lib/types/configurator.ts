@@ -1,3 +1,8 @@
+// ── Streaming Bandwidth Constants ──
+/** Mbps required per 1080p stream */
+export const STREAM_1080P_MBPS = 8;
+/** Mbps required per 4K stream */
+export const STREAM_4K_MBPS = 20;
 import type { SkillLevel } from './assessment';
 
 // ── Service Categories ──
