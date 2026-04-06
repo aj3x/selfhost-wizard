@@ -26,6 +26,40 @@
 	Let's start with some basics to personalize your assessment.
 </p>
 
+<QuestionGroup
+	label="How comfortable are you with technology?"
+	description="This shapes the entire experience — we'll adjust complexity and recommendations accordingly."
+>
+	<SingleSelect
+		options={[
+			{
+				value: 'beginner',
+				label: 'Beginner',
+				description: "I can install apps and follow instructions but I've never used a command line"
+			},
+			{
+				value: 'intermediate',
+				label: 'Intermediate',
+				description: "I'm comfortable with basic terminal commands and have maybe run Docker before"
+			},
+			{
+				value: 'advanced',
+				label: 'Advanced',
+				description: 'I manage my own servers, write scripts, and understand networking'
+			}
+		]}
+		bind:value={$assessment.skillLevel}
+		columns={3}
+	/>
+</QuestionGroup>
+
+{#if isBeginner}
+	<Alert type="beginner">
+		No worries — we'll explain things in plain language and recommend the simplest options.
+		You can always revisit with a higher skill level later.
+	</Alert>
+{/if}
+
 <QuestionGroup label="How many people will use this server?">
 	<SingleSelect
 		options={[
