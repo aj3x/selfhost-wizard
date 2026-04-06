@@ -9,6 +9,7 @@
 	import Alert from '$lib/components/shared/Alert.svelte';
 
 	let isBeginner = $derived($assessment.skillLevel === 'beginner');
+	let minUploadForHousehold = $derived(Math.max(10, $assessment.householdSize * 5));
 
 	function setLocation(key: string) {
 		const loc = LOCATIONS[key];
@@ -24,40 +25,6 @@
 <p class="mb-8 text-(--color-text-muted)">
 	Let's start with some basics to personalize your assessment.
 </p>
-
-<QuestionGroup
-	label="How comfortable are you with technology?"
-	description="This shapes the entire experience — we'll adjust complexity and recommendations accordingly."
->
-	<SingleSelect
-		options={[
-			{
-				value: 'beginner',
-				label: 'Beginner',
-				description: "I can install apps and follow instructions but I've never used a command line"
-			},
-			{
-				value: 'intermediate',
-				label: 'Intermediate',
-				description: "I'm comfortable with basic terminal commands and have maybe run Docker before"
-			},
-			{
-				value: 'advanced',
-				label: 'Advanced',
-				description: 'I manage my own servers, write scripts, and understand networking'
-			}
-		]}
-		bind:value={$assessment.skillLevel}
-		columns={isBeginner ? 1 : 3}
-	/>
-</QuestionGroup>
-
-{#if isBeginner}
-	<Alert type="beginner">
-		No worries — we'll explain things in plain language and recommend the simplest options.
-		You can always revisit with a higher skill level later.
-	</Alert>
-{/if}
 
 <QuestionGroup label="How many people will use this server?">
 	<SingleSelect
@@ -124,10 +91,10 @@
 			<NumberInput id="uploadSpeed" bind:value={$assessment.uploadSpeed} min={1} max={10000} suffix="Mbps" />
 		</div>
 	</div>
-	{#if $assessment.uploadSpeed < 20}
+	{#if $assessment.uploadSpeed < minUploadForHousehold}
 		<Alert type="warning">
-			Your upload speed ({$assessment.uploadSpeed} Mbps) is quite low. Remote streaming and photo backup sync will be slow.
-			We may recommend cloud hosting instead of a home server for remote access.
+			Your upload speed ({$assessment.uploadSpeed} Mbps) is low for a household of {$assessment.householdSize}.
+			Remote streaming and photo backup sync will be slow. You'd want at least {minUploadForHousehold} Mbps for {$assessment.householdSize} user{$assessment.householdSize > 1 ? 's' : ''}.
 		</Alert>
 	{/if}
 </QuestionGroup>

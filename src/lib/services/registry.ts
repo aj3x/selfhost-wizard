@@ -61,7 +61,6 @@ import { mealie } from './mealie';
 import { homepage } from './homepage';
 import { portainer } from './portainer';
 import { uptimeKuma } from './uptime-kuma';
-import { watchtower } from './watchtower';
 
 /** All registered services */
 const ALL_SERVICES: ServiceModule[] = [
@@ -90,7 +89,7 @@ const ALL_SERVICES: ServiceModule[] = [
 	// Productivity
 	vaultwarden, paperless, mealie,
 	// Monitoring
-	homepage, portainer, uptimeKuma, watchtower
+	homepage, portainer, uptimeKuma
 ];
 
 /** Lookup service by ID */

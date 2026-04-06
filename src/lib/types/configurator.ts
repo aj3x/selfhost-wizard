@@ -346,7 +346,7 @@ export const PRESETS: Preset[] = [
 		serviceIds: [
 			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'bazarr',
 			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
-			'homepage', 'watchtower'
+			'homepage'
 		]
 	},
 	{
@@ -366,7 +366,7 @@ export const PRESETS: Preset[] = [
 			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
 			'immich', 'nextcloud', 'kopia', 'adguard',
 			'authelia', 'caddy', 'uptime-kuma', 'portainer',
-			'vaultwarden', 'paperless', 'homepage', 'watchtower'
+			'vaultwarden', 'paperless', 'homepage'
 		]
 	}
 ];

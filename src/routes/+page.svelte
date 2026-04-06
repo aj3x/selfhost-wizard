@@ -1,3 +1,14 @@
+<script lang="ts">
+	import { assessment } from '$lib/stores/assessment';
+	import type { SkillLevel } from '$lib/types/assessment';
+
+	const skillOptions: { value: SkillLevel; label: string; description: string }[] = [
+		{ value: 'beginner', label: 'Beginner', description: "I can install apps and follow guides" },
+		{ value: 'intermediate', label: 'Intermediate', description: "Comfortable with the terminal" },
+		{ value: 'advanced', label: 'Advanced', description: "I manage my own servers" }
+	];
+</script>
+
 <svelte:head>
 	<title>SelfHost Wizard — Should you self-host?</title>
 </svelte:head>
@@ -10,6 +21,27 @@
 		Find out if running your own server for media, photos, and files makes financial and practical
 		sense for you. Get a personalized cost analysis in 5 minutes.
 	</p>
+
+	<fieldset class="mb-8 max-w-lg">
+		<legend class="mb-3 text-sm font-medium text-(--color-text-muted)">What's your technical comfort level?</legend>
+		<div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Skill level">
+			{#each skillOptions as opt}
+				<button
+					onclick={() => ($assessment.skillLevel = opt.value)}
+					role="radio"
+					aria-checked={$assessment.skillLevel === opt.value}
+					class="cursor-pointer rounded-lg border-2 px-3 py-3 text-left text-sm transition-all
+						focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
+						{$assessment.skillLevel === opt.value
+							? 'border-(--color-primary) bg-(--color-primary)/5'
+							: 'border-(--color-border) hover:border-(--color-primary)/50'}"
+				>
+					<span class="block font-medium">{opt.label}</span>
+					<span class="block text-xs text-(--color-text-muted)">{opt.description}</span>
+				</button>
+			{/each}
+		</div>
+	</fieldset>
 
 	<a
 		href="/assess"
@@ -37,7 +69,7 @@
 			<div class="mb-2 text-2xl">3</div>
 			<h3 class="mb-1 font-semibold">Build Your Stack</h3>
 			<p class="text-sm text-(--color-text-muted)">
-				Coming soon: generate a ready-to-deploy Docker Compose setup tailored to your needs.
+				Generate a ready-to-deploy Docker Compose setup tailored to your needs.
 			</p>
 		</div>
 	</div>

@@ -331,7 +331,7 @@ export interface AssessmentState {
 
 export const DEFAULT_ASSESSMENT: AssessmentState = {
 	// Screen 1
-	skillLevel: 'beginner',
+	skillLevel: 'advanced',
 	householdSize: 2,
 	locationKey: 'us_avg',
 	electricityRate: 0.16,

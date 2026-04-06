@@ -83,9 +83,6 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 
 	// Monitoring (always useful)
 	services.push('homepage');
-	if (assessment.skillLevel !== 'beginner') {
-		services.push('watchtower');
-	}
 	if (assessment.skillLevel === 'advanced') {
 		services.push('portainer');
 	}

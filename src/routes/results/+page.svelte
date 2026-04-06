@@ -344,17 +344,52 @@
 		{/if}
 	</div>
 
-	{#if $assessment.uploadSpeed < 20 && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
+	<!-- Recommended OS -->
+	{#if recommendation.tier !== 'stick_with_saas' && recommendation.tier !== 'managed_nas'}
+		<div class="mb-8 rounded-xl border border-(--color-border) p-6">
+			<h3 class="mb-1 text-lg font-semibold">Recommended Operating System</h3>
+			{#if isBeginner}
+				<p class="mb-4 text-sm text-(--color-text-muted)">
+					Your server needs a base operating system to run Docker containers on. Here are the best options.
+				</p>
+			{/if}
+			<div class="space-y-3">
+				<div class="rounded-lg border border-(--color-border) p-4">
+					<div class="flex items-center gap-2">
+						<span class="font-medium">Ubuntu Server LTS</span>
+						<span class="rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-600">Recommended</span>
+					</div>
+					<p class="mt-1 text-sm text-(--color-text-muted)">
+						The most popular choice for Docker-based self-hosting. Lightweight, well-documented, and supported by virtually every guide and tutorial online. Minimal resource overhead — almost all your RAM and CPU go to your services.
+					</p>
+				</div>
+				<div class="rounded-lg border border-(--color-border) p-4">
+					<div class="flex items-center gap-2">
+						<span class="font-medium">TrueNAS SCALE</span>
+					</div>
+					<p class="mt-1 text-sm text-(--color-text-muted)">
+						A full NAS operating system with a web UI, built-in ZFS storage management, and Docker app support.
+						Great if you want a GUI for storage management, but requires significantly more resources
+						(16+ GB RAM recommended) and can be more restrictive for custom Docker Compose setups.
+					</p>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{@const minUploadForStreaming = Math.max(10, $assessment.concurrentStreams * 8)}
+	{@const maxRemoteStreams = Math.floor($assessment.uploadSpeed / 5)}
+	{#if $assessment.uploadSpeed < minUploadForStreaming && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
 		<div class="mb-8 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-6">
 			<h3 class="mb-2 text-lg font-semibold">Bandwidth Warning</h3>
 			<p class="text-sm text-(--color-text-muted)">
-				Your upload speed ({$assessment.uploadSpeed} Mbps) may struggle with remote streaming.
+				Your upload speed ({$assessment.uploadSpeed} Mbps) may struggle with {$assessment.concurrentStreams} concurrent remote stream{$assessment.concurrentStreams > 1 ? 's' : ''}.
 				{#if isBeginner}
 					This means watching media from outside your home could buffer or have poor quality.
-					Consider cloud-hosted self-hosting (like Hetzner) for reliable remote access, or
+					You'd want at least {minUploadForStreaming} Mbps. Consider cloud-hosted self-hosting (like Hetzner) for reliable remote access, or
 					stick to local-only use.
 				{:else}
-					At {$assessment.uploadSpeed} Mbps, you can support ~{Math.floor($assessment.uploadSpeed / 5)} simultaneous 1080p remote streams.
+					At {$assessment.uploadSpeed} Mbps, you can support ~{maxRemoteStreams} simultaneous 1080p remote stream{maxRemoteStreams !== 1 ? 's' : ''}, but you want {$assessment.concurrentStreams}.
 					Consider Hetzner/OVH dedicated servers for remote-heavy use cases.
 				{/if}
 			</p>

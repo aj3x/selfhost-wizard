@@ -48,25 +48,27 @@ export function generateRecommendation(
 	}
 
 	// Cloud-hosted: high remote needs, slow upload, low time tolerance, but significant spending
+	const minUploadNeeded = Math.max(10, state.concurrentStreams * 8);
 	if (
 		(state.remoteAccess === 'regular' || state.remoteAccess === 'share') &&
-		state.uploadSpeed < 20 &&
+		state.uploadSpeed < minUploadNeeded &&
 		monthlySaasCost >= 30
 	) {
-		reasons.push('Low upload speed makes home hosting difficult for remote use.');
+		reasons.push(`Low upload speed (${state.uploadSpeed} Mbps) makes home hosting difficult for ${state.concurrentStreams} remote stream(s).`);
 		reasons.push('A cloud server gives you full control without upload speed limits.');
 		return {
 			tier: 'cloud_hosted',
 			title: 'Consider Cloud-Hosted Self-Hosting',
 			summary:
-				'Your upload speed is too low for reliable remote streaming. A dedicated server from Hetzner or OVH (~$10-30/month) gives you self-hosting benefits with data center bandwidth.',
+				`Your upload speed is too low for reliable remote streaming with ${state.concurrentStreams} concurrent stream(s). A dedicated server from Hetzner or OVH (~$10-30/month) gives you self-hosting benefits with data center bandwidth.`,
 			reasons
 		};
 	}
 
 	// Upload speed too low for sharing
-	if (state.remoteAccess === 'share' && state.uploadSpeed < 10) {
-		reasons.push('Your upload speed may limit sharing media with others remotely.');
+	const minShareUpload = Math.max(10, state.concurrentStreams * 5);
+	if (state.remoteAccess === 'share' && state.uploadSpeed < minShareUpload) {
+		reasons.push(`Your upload speed (${state.uploadSpeed} Mbps) may limit sharing media with ${state.concurrentStreams} people remotely.`);
 	}
 
 	// Break-even analysis
