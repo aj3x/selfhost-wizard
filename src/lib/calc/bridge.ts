@@ -31,9 +31,7 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 			services.push('lidarr');
 		}
 
-		if (assessment.householdSize > 2) {
-			services.push('seerr'); // request management for families
-		}
+		services.push('seerr');
 	}
 
 	// Photos
