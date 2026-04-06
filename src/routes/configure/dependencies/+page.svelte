@@ -152,7 +152,7 @@
 	{/if}
 
 	{#if recommendations.length > 0}
-		<section class="card mb-6" aria-labelledby="recommendations-heading">
+		<section class="card" aria-labelledby="recommendations-heading">
 			<h2 id="recommendations-heading" class="mb-2 text-sm font-semibold">Recommended Additions</h2>
 			<p class="mb-3 hint">
 				These services work well with your current selection.
@@ -170,7 +170,7 @@
 		</section>
 	{/if}
 
-	<section class="card" aria-labelledby="selected-heading">
+	<section class="card mb-0" aria-labelledby="selected-heading">
 		<h2 id="selected-heading" class="mb-3 text-sm font-semibold">Selected Services ({allIds.length})</h2>
 		<ul class="pill-group" aria-label="Selected services">
 			{#each allIds as id}

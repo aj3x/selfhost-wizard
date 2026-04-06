@@ -248,7 +248,7 @@
 		</div>
 	{/if}
 
-	<section class="mb-6 grid gap-4 sm:grid-cols-4" aria-label="Configuration summary">
+	<section class="grid gap-4 sm:grid-cols-4" aria-label="Configuration summary">
 		<div class="card text-center">
 			<div class="text-2xl font-bold text-(--color-primary)">{allIds.length}</div>
 			<div class="hint">Services</div>
@@ -271,7 +271,7 @@
 		</div>
 	</section>
 
-	<section class="card mb-6" aria-labelledby="services-ports-heading">
+	<section class="card" aria-labelledby="services-ports-heading">
 		<h2 id="services-ports-heading" class="section-heading">Services & Ports</h2>
 		<ul class="space-y-1" aria-label="Services and their port mappings">
 			{#each allIds as id}
@@ -301,7 +301,7 @@
 		</ul>
 	</section>
 
-	<section class="mb-6 card p-0" aria-label="Generated files">
+	<section class="card p-0" aria-label="Generated files">
 		<div class="flex border-b border-(--color-border) overflow-x-auto" role="tablist" aria-label="File tabs">
 			{#each tabs as tab}
 				<button

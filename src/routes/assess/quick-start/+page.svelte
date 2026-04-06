@@ -42,7 +42,7 @@
 					<div class="rounded-lg bg-(--color-primary)/5 p-3 text-xs italic">
 						I can't recommend this enough. Most of what I was doing ran off my old overheating
 						laptop. I never needed to plug in a keyboard and monitor, and if the power went out I
-						never worried.
+						never worried. Just update battery settings and keep an eye on it.
 					</div>
 					<p>
 						<strong>Want file storage with no effort?</strong> Consider a

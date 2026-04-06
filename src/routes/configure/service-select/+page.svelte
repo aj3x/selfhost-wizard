@@ -70,7 +70,7 @@
 	{/if}
 
 	{#each categories as group}
-		<section class="mb-6" aria-label={group.label}>
+		<section aria-label={group.label}>
 			<h2 class="section-heading">
 				{group.label}
 			</h2>

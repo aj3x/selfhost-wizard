@@ -76,7 +76,7 @@
 		</div>
 	{:else}
 
-	<fieldset class="card mb-6">
+	<fieldset class="card">
 		<legend class="section-heading">Base Paths</legend>
 		<div class="space-y-3">
 			<div class="field-row">
@@ -154,7 +154,7 @@
 		</p>
 	</fieldset>
 
-	<section class="card mb-6" aria-labelledby="dir-preview-heading">
+	<section class="card" aria-labelledby="dir-preview-heading">
 		<h2 id="dir-preview-heading" class="section-heading">Directory Preview</h2>
 		<div class="rounded-lg bg-(--color-surface-alt) p-4 font-mono text-sm" role="img" aria-label="Directory tree structure">
 			{#each dirTree as dir}
@@ -170,7 +170,7 @@
 	</section>
 
 	{#if hasMedia}
-		<section class="card bg-(--color-surface-alt)/50" aria-labelledby="media-path-heading">
+		<section class="card mb-0 bg-(--color-surface-alt)/50" aria-labelledby="media-path-heading">
 			<h3 id="media-path-heading" class="mb-1 text-sm font-semibold">Why a unified media path?</h3>
 			<p class="hint">
 				The *arr apps and download clients share a common <code class="rounded bg-(--color-surface-alt) px-1">/media</code>

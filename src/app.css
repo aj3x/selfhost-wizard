@@ -23,7 +23,18 @@
 	}
 }
 
+.dev {
+	background-color: fuchsia;
+}
+
 @layer components {
+	section {
+		@apply mb-6;
+	}
+	fieldset {
+		@apply mb-6;
+	}
+
 	/* Card — bordered section container */
 	.card {
 		@apply rounded-xl border border-(--color-border) p-4;

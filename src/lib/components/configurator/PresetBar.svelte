@@ -19,7 +19,7 @@
 	);
 </script>
 
-<section class="mb-6" aria-labelledby="presets-heading">
+<section aria-labelledby="presets-heading">
 	<h3 id="presets-heading" class="mb-2 text-sm font-medium text-(--color-text-muted)">Quick Start Presets</h3>
 	<div class="pill-group" role="group" aria-label="Preset options">
 		{#each visiblePresets as preset}

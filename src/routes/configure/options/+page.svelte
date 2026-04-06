@@ -66,7 +66,7 @@
 		</div>
 	{:else}
 
-	<fieldset class="card mb-6">
+	<fieldset class="card">
 		<legend class="section-heading">System</legend>
 		<div class="flex items-center justify-end">
 			{#if isBeginner}
@@ -130,7 +130,7 @@
 	</fieldset>
 
 	{#if hasGpuService}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">GPU Transcoding</legend>
 			<label class="flex cursor-pointer items-center gap-3">
 				<input
@@ -148,7 +148,7 @@
 	{/if}
 
 	{#if hasGluetun}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">VPN Provider</legend>
 			<div class="space-y-3" role="radiogroup" aria-label="VPN provider selection">
 				{#each VPN_PROVIDERS as provider}
@@ -233,7 +233,7 @@
 	{/if}
 
 	{#if hasPlex}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">Plex</legend>
 			<div class="field-row">
 				<label for="plex-claim" class="field-label">Claim Token</label>
@@ -253,7 +253,7 @@
 	{/if}
 
 	{#if hasTailscale}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">Tailscale</legend>
 			<div class="field-row">
 				<label for="ts-authkey" class="field-label">Auth Key</label>
@@ -273,7 +273,7 @@
 	{/if}
 
 	{#if serviceEnvSections.length > 0}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">Service Settings</legend>
 			<div class="space-y-4">
 				{#each serviceEnvSections as section}
@@ -301,7 +301,7 @@
 	{/if}
 
 	{#if hasReverseProxy}
-		<fieldset class="card mb-6">
+		<fieldset class="card">
 			<legend class="section-heading">Domain</legend>
 			<div class="space-y-3">
 				<div class="field-row">
