@@ -36,6 +36,9 @@
 	);
 	let recommendation = $derived(generateRecommendation($assessment, monthlySaas, breakEven));
 
+	let minUploadForStreaming = $derived(Math.max(10, $assessment.concurrentStreams * 8));
+	let maxRemoteStreams = $derived(Math.floor($assessment.uploadSpeed / 5));
+
 	let monthlySavings = $derived(monthlySaas - monthlySelfHosted);
 	let vpnCost = $derived(
 		$assessment.vpnService?.enabled ? $assessment.vpnService.monthlyCost : 0
@@ -377,8 +380,6 @@
 		</div>
 	{/if}
 
-	{@const minUploadForStreaming = Math.max(10, $assessment.concurrentStreams * 8)}
-	{@const maxRemoteStreams = Math.floor($assessment.uploadSpeed / 5)}
 	{#if $assessment.uploadSpeed < minUploadForStreaming && ($assessment.remoteAccess === 'regular' || $assessment.remoteAccess === 'share')}
 		<div class="mb-8 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-6">
 			<h3 class="mb-2 text-lg font-semibold">Bandwidth Warning</h3>
