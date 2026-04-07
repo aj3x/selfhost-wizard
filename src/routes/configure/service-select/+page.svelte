@@ -79,7 +79,6 @@
 					<ServiceCard
 						{service}
 						selected={selectedSet.has(service.id)}
-						dimmed={skillOrder[service.skillLevel] > skillOrder[skillLevel]}
 						onToggle={toggleService}
 					/>
 				{/each}

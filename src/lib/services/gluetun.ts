@@ -12,7 +12,6 @@ export const gluetun: ServiceModule = {
 	networks: ['vpn'],
 	ports: [],
 	environment: [
-		{ key: 'VPN_SERVICE_PROVIDER', description: 'VPN provider name', required: true },
 		{ key: 'TZ', value: '${TZ}' }
 	],
 	resourceEstimate: { ramMB: 128, cpuShares: 128, storageGB: 0.1 },
@@ -27,7 +26,7 @@ export const gluetun: ServiceModule = {
 		environment.push(`VPN_TYPE=${vpnType}`);
 
 		// Add provider-specific env vars from user config
-		const skipKeys = new Set(['VPN_PROVIDER', 'VPN_TYPE', 'VPN_COUNTRY', 'HOSTNAME']);
+		const skipKeys = new Set(['VPN_PROVIDER', 'VPN_SERVICE_PROVIDER', 'VPN_TYPE', 'VPN_COUNTRY', 'HOSTNAME']);
 		for (const [key, val] of Object.entries(config.env)) {
 			if (!skipKeys.has(key) && val) {
 				environment.push(`${key}=\${${key}}`);

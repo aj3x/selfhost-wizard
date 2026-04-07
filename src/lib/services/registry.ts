@@ -24,6 +24,7 @@ import { nzbget } from './nzbget';
 
 // Media Processing
 import { tdarr } from './tdarr';
+import { recyclarr } from './recyclarr';
 
 // Photos
 import { immich } from './immich';
@@ -61,6 +62,7 @@ import { mealie } from './mealie';
 import { homepage } from './homepage';
 import { portainer } from './portainer';
 import { uptimeKuma } from './uptime-kuma';
+import { diun } from './diun';
 
 /** All registered services */
 const ALL_SERVICES: ServiceModule[] = [
@@ -71,7 +73,7 @@ const ALL_SERVICES: ServiceModule[] = [
 	// Download Clients
 	qbittorrent, transmission, sabnzbd, nzbget,
 	// Media Processing
-	tdarr,
+	tdarr, recyclarr,
 	// Photos
 	immich,
 	// Files & Sync
@@ -89,7 +91,7 @@ const ALL_SERVICES: ServiceModule[] = [
 	// Productivity
 	vaultwarden, paperless, mealie,
 	// Monitoring
-	homepage, portainer, uptimeKuma
+	homepage, portainer, uptimeKuma, diun
 ];
 
 /** Lookup service by ID */

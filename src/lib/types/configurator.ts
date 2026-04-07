@@ -269,11 +269,10 @@ export const VPN_PROVIDERS: VpnProviderInfo[] = [
 		defaultType: 'openvpn',
 		supportsPortForwarding: false,
 		envVars: [
-			{ key: 'VPN_TYPE', description: 'VPN protocol (openvpn or wireguard)', required: true },
-			{ key: 'OPENVPN_USER', description: 'OpenVPN username (if using OpenVPN)' },
-			{ key: 'OPENVPN_PASSWORD', description: 'OpenVPN password (if using OpenVPN)', secret: true },
-			{ key: 'WIREGUARD_PRIVATE_KEY', description: 'WireGuard private key (if using WireGuard)', secret: true },
-			{ key: 'WIREGUARD_ADDRESSES', description: 'WireGuard address (if using WireGuard)' }
+			{ key: 'OPENVPN_USER', description: 'OpenVPN username', required: true },
+			{ key: 'OPENVPN_PASSWORD', description: 'OpenVPN password', required: true, secret: true },
+			{ key: 'WIREGUARD_PRIVATE_KEY', description: 'WireGuard private key', required: true, secret: true },
+			{ key: 'WIREGUARD_ADDRESSES', description: 'WireGuard address', required: true }
 		]
 	}
 ];
@@ -350,7 +349,7 @@ export const PRESETS: Preset[] = [
 		skillLevel: 'intermediate',
 		serviceIds: [
 			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'bazarr',
-			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
+			'qbittorrent', 'gluetun', 'seerr', 'tdarr', 'recyclarr',
 			'homepage'
 		]
 	},
@@ -368,10 +367,10 @@ export const PRESETS: Preset[] = [
 		skillLevel: 'advanced',
 		serviceIds: [
 			'jellyfin', 'sonarr', 'radarr', 'prowlarr', 'bazarr',
-			'qbittorrent', 'gluetun', 'seerr', 'tdarr',
+			'qbittorrent', 'gluetun', 'seerr', 'tdarr', 'recyclarr',
 			'immich', 'nextcloud', 'kopia', 'adguard',
 			'authelia', 'caddy', 'uptime-kuma', 'portainer',
-			'vaultwarden', 'paperless', 'homepage'
+			'vaultwarden', 'paperless', 'diun', 'homepage'
 		]
 	}
 ];

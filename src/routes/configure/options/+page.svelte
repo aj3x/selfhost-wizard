@@ -184,26 +184,72 @@
 						<h3 class="text-sm font-medium">
 							{selectedProvider.name} Credentials
 						</h3>
-						{#if selectedProvider.id == "custom"}
+						{#if selectedProvider.id === 'custom'}
 							<p class="hint">
-								For custom VPN providers, see the <a href="https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers" target="_blank" rel="noopener noreferrer" class="text-(--color-primary) underline">Gluetun custom VPN setup instructions</a> to determine which credentials and environment variables you need to fill in below.
+								For custom VPN providers, see the <a href="https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers" target="_blank" rel="noopener noreferrer" class="text-(--color-primary) underline">Gluetun custom VPN setup instructions</a> to determine which credentials you need.
 							</p>
-						{/if}
-						{#each selectedProvider.envVars as envVar}
 							<div class="field-row">
-								<label for="vpn-{envVar.key}" class="min-w-[180px] text-sm">{envVar.description || envVar.key}</label>
+								<label for="vpn-provider-name" class="min-w-[180px] text-sm">Gluetun Provider Name</label>
 								<input
-									id="vpn-{envVar.key}"
-									type={envVar.secret ? 'password' : 'text'}
-									value={gc.vpnEnv[envVar.key] || ''}
+									id="vpn-provider-name"
+									type="text"
+									value={gc.vpnEnv['VPN_SERVICE_PROVIDER'] || ''}
 									oninput={(e) => {
-										const newEnv = { ...gc.vpnEnv, [envVar.key]: e.currentTarget.value };
+										const newEnv = { ...gc.vpnEnv, VPN_SERVICE_PROVIDER: e.currentTarget.value };
 										configurator.setVpnEnv(newEnv);
 									}}
 									class="input-mono"
-									placeholder={envVar.key}
+									placeholder="e.g. windscribe, vyprvpn"
 								/>
 							</div>
+							<div class="field-row">
+								<span class="min-w-[180px] text-sm">VPN Protocol</span>
+								<div class="flex gap-2">
+									<button
+										type="button"
+										onclick={() => configurator.updateGlobalConfig({ vpnType: 'wireguard' })}
+										class="cursor-pointer rounded-lg border px-4 py-1.5 text-sm transition-colors
+											focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
+											{gc.vpnType === 'wireguard'
+												? 'border-(--color-primary) bg-(--color-primary)/10 font-medium text-(--color-primary)'
+												: 'border-(--color-border) hover:border-(--color-primary)/40'}"
+									>
+										WireGuard
+									</button>
+									<button
+										type="button"
+										onclick={() => configurator.updateGlobalConfig({ vpnType: 'openvpn' })}
+										class="cursor-pointer rounded-lg border px-4 py-1.5 text-sm transition-colors
+											focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)
+											{gc.vpnType === 'openvpn'
+												? 'border-(--color-primary) bg-(--color-primary)/10 font-medium text-(--color-primary)'
+												: 'border-(--color-border) hover:border-(--color-primary)/40'}"
+									>
+										OpenVPN
+									</button>
+								</div>
+							</div>
+						{/if}
+						{#each selectedProvider.envVars as envVar}
+							{@const isWg = envVar.key.startsWith('WIREGUARD_')}
+							{@const isOvpn = envVar.key.startsWith('OPENVPN_')}
+							{@const showField = selectedProvider.id !== 'custom' || (gc.vpnType === 'wireguard' ? isWg : isOvpn)}
+							{#if showField}
+								<div class="field-row">
+									<label for="vpn-{envVar.key}" class="min-w-[180px] text-sm">{envVar.description || envVar.key}</label>
+									<input
+										id="vpn-{envVar.key}"
+										type={envVar.secret ? 'password' : 'text'}
+										value={gc.vpnEnv[envVar.key] || ''}
+										oninput={(e) => {
+											const newEnv = { ...gc.vpnEnv, [envVar.key]: e.currentTarget.value };
+											configurator.setVpnEnv(newEnv);
+										}}
+										class="input-mono"
+										placeholder={envVar.key}
+									/>
+								</div>
+							{/if}
 						{/each}
 
 						<div class="field-row">

@@ -127,10 +127,14 @@ export function generateEnvFile(state: ConfiguratorState): string {
 	// VPN settings
 	if (allIds.includes('gluetun') && gc.vpnProvider) {
 		lines.push('', '# ── VPN ──');
-		lines.push(`VPN_PROVIDER=${gc.vpnProvider}`);
+		const providerName = gc.vpnProvider === 'custom'
+			? (gc.vpnEnv['VPN_SERVICE_PROVIDER'] || 'custom')
+			: gc.vpnProvider;
+		lines.push(`VPN_PROVIDER=${providerName}`);
 		lines.push(`VPN_TYPE=${gc.vpnType}`);
 		if (gc.vpnCountry) lines.push(`VPN_COUNTRY=${gc.vpnCountry}`);
 		for (const [key, val] of Object.entries(gc.vpnEnv)) {
+			if (key === 'VPN_SERVICE_PROVIDER') continue;
 			lines.push(`${key}=${val}`);
 		}
 	}

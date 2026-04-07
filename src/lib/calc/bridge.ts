@@ -31,6 +31,10 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 		if (assessment.wantsMusic) {
 			services.push('lidarr');
 		}
+
+		if (assessment.skillLevel !== 'beginner') {
+			services.push('recyclarr');
+		}
 	}
 
 	// Photos
@@ -85,6 +89,9 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 	services.push('homepage');
 	if (assessment.skillLevel === 'advanced') {
 		services.push('portainer');
+	}
+	if (assessment.skillLevel !== 'beginner') {
+		services.push('diun');
 	}
 
 	// Deduplicate
