@@ -6,7 +6,7 @@
 	let allIds = $derived([...$configurator.selectedServices, ...$configurator.resolvedDependencies]);
 
 	let hasMedia = $derived(allIds.some((id) => ['sonarr', 'radarr', 'jellyfin', 'plex', 'lidarr', 'tdarr', 'bazarr'].includes(id)));
-	let hasPhotos = $derived(allIds.includes('immich'));
+	let hasPhotos = $derived(allIds.includes('immich') || allIds.includes('photoprism'));
 	let hasFiles = $derived(allIds.some((id) => ['nextcloud', 'syncthing', 'filebrowser'].includes(id)));
 	let hasBackup = $derived(allIds.some((id) => ['duplicati', 'kopia'].includes(id)));
 	let hasMusic = $derived(allIds.includes('lidarr'));

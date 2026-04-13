@@ -28,6 +28,7 @@ import { recyclarr } from './recyclarr';
 
 // Photos
 import { immich } from './immich';
+import { photoprism } from './photoprism';
 
 // Files & Sync
 import { nextcloud } from './nextcloud';
@@ -75,7 +76,7 @@ const ALL_SERVICES: ServiceModule[] = [
 	// Media Processing
 	tdarr, recyclarr,
 	// Photos
-	immich,
+	immich, photoprism,
 	// Files & Sync
 	nextcloud, syncthing, filebrowser,
 	// Backup

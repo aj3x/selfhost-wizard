@@ -428,6 +428,7 @@ function generateCaddyfile(
 		seerr: { sub: 'requests', port: 5055 },
 		ombi: { sub: 'requests', port: 3579 },
 		immich: { sub: 'photos', port: 2283 },
+		photoprism: { sub: 'photos', port: 2342 },
 		nextcloud: { sub: 'files', port: 8443 },
 		homepage: { sub: 'home', port: 3000 },
 		portainer: { sub: 'portainer', port: 9000 },

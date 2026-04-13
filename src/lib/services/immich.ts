@@ -8,7 +8,8 @@ export const immich: ServiceModule = {
 	skillLevel: 'beginner',
 	requires: [],
 	recommends: [],
-	conflicts: [],
+	conflicts: ['photoprism'],
+	conflictReason: 'Both are photo management platforms. Pick one to avoid duplicating storage and indexing.',
 	networks: ['immich'],
 	ports: [{ host: 2283, container: 2283 }],
 	environment: [
