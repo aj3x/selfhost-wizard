@@ -4,12 +4,14 @@ import { SERVICE_CATEGORY_ORDER, SERVICE_CATEGORY_LABELS } from '$lib/types/conf
 // Media Server
 import { jellyfin } from './jellyfin';
 import { plex } from './plex';
+import { audiobookshelf } from './audiobookshelf';
 
 // Media Management
 import { sonarr } from './sonarr';
 import { radarr } from './radarr';
 import { lidarr } from './lidarr';
 import { readarr } from './readarr';
+import { lazylibrarian } from './lazylibrarian';
 import { bazarr } from './bazarr';
 import { prowlarr } from './prowlarr';
 import { seerr } from './seerr';
@@ -68,9 +70,9 @@ import { diun } from './diun';
 /** All registered services */
 const ALL_SERVICES: ServiceModule[] = [
 	// Media Server
-	jellyfin, plex,
+	jellyfin, plex, audiobookshelf,
 	// Media Management
-	sonarr, radarr, lidarr, readarr, bazarr, prowlarr, seerr, ombi, tautulli,
+	sonarr, radarr, lidarr, readarr, lazylibrarian, bazarr, prowlarr, seerr, ombi, tautulli,
 	// Download Clients
 	qbittorrent, transmission, sabnzbd, nzbget,
 	// Media Processing

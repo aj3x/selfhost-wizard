@@ -5,7 +5,7 @@
 	let gc = $derived($configurator.globalConfig);
 	let allIds = $derived([...$configurator.selectedServices, ...$configurator.resolvedDependencies]);
 
-	let hasMedia = $derived(allIds.some((id) => ['sonarr', 'radarr', 'jellyfin', 'plex', 'lidarr', 'tdarr', 'bazarr'].includes(id)));
+	let hasMedia = $derived(allIds.some((id) => ['sonarr', 'radarr', 'jellyfin', 'plex', 'lidarr', 'tdarr', 'bazarr', 'audiobookshelf', 'lazylibrarian'].includes(id)));
 	let hasSonarr = $derived(allIds.includes('sonarr'));
 	let hasRadarr = $derived(allIds.includes('radarr'));
 	let hasPhotos = $derived(allIds.includes('immich') || allIds.includes('photoprism'));
@@ -36,6 +36,10 @@
 			dirs.push({ path: 'media/tv/', label: 'tv/', indent: 2 });
 			if (hasMusic) {
 				dirs.push({ path: 'media/music/', label: 'music/', indent: 2 });
+			}
+			if (allIds.includes('audiobookshelf') || allIds.includes('lazylibrarian')) {
+				dirs.push({ path: 'media/audiobooks/', label: 'audiobooks/', indent: 2 });
+				dirs.push({ path: 'media/podcasts/', label: 'podcasts/', indent: 2 });
 			}
 			dirs.push({ path: 'media/downloads/', label: 'downloads/', indent: 2 });
 			dirs.push({ path: 'media/downloads/complete/', label: 'complete/', indent: 3 });

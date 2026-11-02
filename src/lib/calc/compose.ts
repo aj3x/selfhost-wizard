@@ -10,6 +10,7 @@ import { findService } from '$lib/services/registry';
 const PROXY_TARGETS: Record<string, { sub: string; service: string; port: number }> = {
 	jellyfin: { sub: 'media', service: 'jellyfin', port: 8096 },
 	plex: { sub: 'plex', service: 'plex', port: 32400 },
+	audiobookshelf: { sub: 'audiobooks', service: 'audiobookshelf', port: 80 },
 	sonarr: { sub: 'sonarr', service: 'sonarr', port: 8989 },
 	radarr: { sub: 'radarr', service: 'radarr', port: 7878 },
 	prowlarr: { sub: 'prowlarr', service: 'prowlarr', port: 9696 },
@@ -277,6 +278,12 @@ export function generateSetupScript(state: ConfiguratorState): string {
 		if (allIds.includes('lidarr')) {
 			dirs.push(`${mediaBase}/music`);
 		}
+		if (allIds.some((id) => ['audiobookshelf', 'lazylibrarian'].includes(id))) {
+			dirs.push(`${mediaBase}/audiobooks`, `${mediaBase}/podcasts`);
+		}
+		if (allIds.includes('audiobookshelf')) {
+			dirs.push(`${configBase}/audiobookshelf/config`, `${configBase}/audiobookshelf/metadata`);
+		}
 	}
 
 	if (allIds.some((id) => ['immich', 'photoprism'].includes(id))) {
@@ -475,6 +482,10 @@ export function toComposeYaml(services: Record<string, ComposeService>, networks
 		lines.push(`  ${name}:`);
 		lines.push(`    image: ${svc.image}`);
 		lines.push(`    container_name: ${svc.container_name}`);
+
+		if (svc.user) {
+			lines.push(`    user: "${svc.user}"`);
+		}
 
 		if (svc.hostname) {
 			lines.push(`    hostname: ${svc.hostname}`);

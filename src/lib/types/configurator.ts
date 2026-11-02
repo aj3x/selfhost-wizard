@@ -113,6 +113,7 @@ export type DependencyRule = DependencyAll | DependencyOneOf;
 export interface ComposeService {
 	image: string;
 	container_name: string;
+	user?: string;
 	environment?: string[];
 	volumes?: string[];
 	ports?: string[];
