@@ -6,6 +6,8 @@
 	let allIds = $derived([...$configurator.selectedServices, ...$configurator.resolvedDependencies]);
 
 	let hasMedia = $derived(allIds.some((id) => ['sonarr', 'radarr', 'jellyfin', 'plex', 'lidarr', 'tdarr', 'bazarr'].includes(id)));
+	let hasSonarr = $derived(allIds.includes('sonarr'));
+	let hasRadarr = $derived(allIds.includes('radarr'));
 	let hasPhotos = $derived(allIds.includes('immich') || allIds.includes('photoprism'));
 	let hasFiles = $derived(allIds.some((id) => ['nextcloud', 'syncthing', 'filebrowser'].includes(id)));
 	let hasBackup = $derived(allIds.some((id) => ['duplicati', 'kopia'].includes(id)));
@@ -153,6 +155,42 @@
 			Use <code class="rounded bg-(--color-surface-alt) px-1">${'{BASE_DIR}'}</code> to reference the base path.
 		</p>
 	</fieldset>
+
+	{#if hasSonarr || hasRadarr}
+		<fieldset class="card">
+			<legend class="section-heading">Media Library Paths</legend>
+			<p class="mb-3 hint">
+				These are the paths inside the container where Sonarr/Radarr will store your media.
+				The setup script will use these to configure root folders automatically.
+			</p>
+			<div class="space-y-3">
+				{#if hasRadarr}
+					<div class="field-row">
+						<label for="path-movies" class="min-w-[120px] text-sm">Movies</label>
+						<input
+							id="path-movies"
+							type="text"
+							value={gc.moviesPath}
+							oninput={(e) => configurator.updateGlobalConfig({ moviesPath: e.currentTarget.value })}
+							class="input-mono"
+						/>
+					</div>
+				{/if}
+				{#if hasSonarr}
+					<div class="field-row">
+						<label for="path-tv" class="min-w-[120px] text-sm">TV Shows</label>
+						<input
+							id="path-tv"
+							type="text"
+							value={gc.tvPath}
+							oninput={(e) => configurator.updateGlobalConfig({ tvPath: e.currentTarget.value })}
+							class="input-mono"
+						/>
+					</div>
+				{/if}
+			</div>
+		</fieldset>
+	{/if}
 
 	<section class="card" aria-labelledby="dir-preview-heading">
 		<h2 id="dir-preview-heading" class="section-heading">Directory Preview</h2>

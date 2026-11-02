@@ -261,14 +261,128 @@ export function generateSetupScript(state: ConfiguratorState): string {
 		'',
 		'echo "Setting ownership..."',
 		`chown -R $PUID:$PGID "${gc.baseDir.replace('${BASE_DIR}', gc.baseDir)}"`,
-		'',
-		'echo "Done! Next steps:"',
-		'echo "  1. Review and edit .env with your credentials"',
-		'echo "  2. Run: docker compose up -d"',
-		'echo "  3. Access services at the ports listed in docker-compose.yml"',
 		''
 	];
 
+	// --- Post-boot media setup ---
+	const hasSonarr = allIds.includes('sonarr');
+	const hasRadarr = allIds.includes('radarr');
+	const hasRecyclarr = allIds.includes('recyclarr');
+
+	if (hasSonarr || hasRadarr || hasRecyclarr) {
+		lines.push(
+			'# ── Auto-configure media services ──',
+			'',
+			'echo ""',
+			'echo "Starting containers for initial configuration..."',
+			'docker compose up -d',
+			'',
+			'# Wait for services to become healthy',
+			'wait_for_service() {',
+			'  local name="$1"',
+			'  local url="$2"',
+			'  local max_attempts=30',
+			'  local attempt=0',
+			'  echo -n "Waiting for $name..."',
+			'  while [ $attempt -lt $max_attempts ]; do',
+			'    if curl -sf "$url" > /dev/null 2>&1; then',
+			'      echo " ready!"',
+			'      return 0',
+			'    fi',
+			'    echo -n "."',
+			'    sleep 2',
+			'    attempt=$((attempt + 1))',
+			'  done',
+			'  echo " timed out (will need manual setup)"',
+			'  return 1',
+			'}',
+			'',
+			'# Get API key from a running *arr service config.xml',
+			'get_api_key() {',
+			'  local container="$1"',
+			'  local config_path="$2"',
+			'  docker exec "$container" cat "$config_path" 2>/dev/null | grep -oP \'(?<=<ApiKey>)[^<]+\' || echo ""',
+			'}',
+			''
+		);
+
+		if (hasRadarr) {
+			lines.push(
+				'# Configure Radarr root folder',
+				'if wait_for_service "Radarr" "http://localhost:7878/api/v3/system/status"; then',
+				'  RADARR_KEY=$(get_api_key "radarr" "/config/config.xml")',
+				'  if [ -n "$RADARR_KEY" ]; then',
+				`    EXISTING=$(curl -sf "http://localhost:7878/api/v3/rootfolder" -H "X-Api-Key: $RADARR_KEY")`,
+				'    if echo "$EXISTING" | grep -q "\\[\\]"; then',
+				`      curl -sf -X POST "http://localhost:7878/api/v3/rootfolder" \\`,
+				'        -H "X-Api-Key: $RADARR_KEY" \\',
+				'        -H "Content-Type: application/json" \\',
+				`        -d '{"path": "${gc.moviesPath}"}' > /dev/null`,
+				`      echo "Radarr: root folder set to ${gc.moviesPath}"`,
+				'    else',
+				'      echo "Radarr: root folder already configured, skipping"',
+				'    fi',
+				'  else',
+				'    echo "Radarr: could not read API key, skipping root folder setup"',
+				'  fi',
+				'fi',
+				''
+			);
+		}
+
+		if (hasSonarr) {
+			lines.push(
+				'# Configure Sonarr root folder',
+				'if wait_for_service "Sonarr" "http://localhost:8989/api/v3/system/status"; then',
+				'  SONARR_KEY=$(get_api_key "sonarr" "/config/config.xml")',
+				'  if [ -n "$SONARR_KEY" ]; then',
+				`    EXISTING=$(curl -sf "http://localhost:8989/api/v3/rootfolder" -H "X-Api-Key: $SONARR_KEY")`,
+				'    if echo "$EXISTING" | grep -q "\\[\\]"; then',
+				`      curl -sf -X POST "http://localhost:8989/api/v3/rootfolder" \\`,
+				'        -H "X-Api-Key: $SONARR_KEY" \\',
+				'        -H "Content-Type: application/json" \\',
+				`        -d '{"path": "${gc.tvPath}"}' > /dev/null`,
+				`      echo "Sonarr: root folder set to ${gc.tvPath}"`,
+				'    else',
+				'      echo "Sonarr: root folder already configured, skipping"',
+				'    fi',
+				'  else',
+				'    echo "Sonarr: could not read API key, skipping root folder setup"',
+				'  fi',
+				'fi',
+				''
+			);
+		}
+
+		if (hasRecyclarr) {
+			lines.push(
+				'# Sync TRaSH Guides quality profiles via Recyclarr',
+				'echo "Running Recyclarr sync..."',
+				'docker compose run --rm recyclarr sync || echo "Recyclarr sync failed — you can run it manually later with: docker compose run --rm recyclarr sync"',
+				''
+			);
+		}
+	}
+
+	lines.push(
+		'echo ""',
+		'echo "Done! Next steps:"',
+		'echo "  1. Review and edit .env with your credentials"',
+	);
+
+	if (hasSonarr || hasRadarr || hasRecyclarr) {
+		lines.push(
+			'echo "  2. Your containers are already running"',
+			'echo "  3. Access services at the ports listed in docker-compose.yml"'
+		);
+	} else {
+		lines.push(
+			'echo "  2. Run: docker compose up -d"',
+			'echo "  3. Access services at the ports listed in docker-compose.yml"'
+		);
+	}
+
+	lines.push('');
 	return lines.join('\n');
 }
 

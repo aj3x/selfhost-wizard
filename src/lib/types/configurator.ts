@@ -289,6 +289,10 @@ export interface GlobalConfig {
 	photoDir: string;
 	filesDir: string;
 	backupDir: string;
+	/** Container-internal path for movies (used by Sonarr/Radarr root folder setup) */
+	moviesPath: string;
+	/** Container-internal path for TV shows (used by Sonarr/Radarr root folder setup) */
+	tvPath: string;
 	hostname: string;
 	/** Reverse proxy domain (optional) */
 	domain: string;
@@ -312,6 +316,8 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
 	photoDir: '${BASE_DIR}/photos',
 	filesDir: '${BASE_DIR}/files',
 	backupDir: '${BASE_DIR}/backups',
+	moviesPath: '/media/movies',
+	tvPath: '/media/tv',
 	hostname: 'homeserver',
 	domain: '',
 	email: '',
