@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	let expanded = $state(true);
 </script>
 
@@ -93,13 +94,13 @@
 	<!-- CTAs -->
 	<div class="flex flex-col gap-3 sm:flex-row">
 		<a
-			href="/assess/about-you"
+			href={resolve('/assess/about-you')}
 			class="flex-1 rounded-xl bg-(--color-primary) px-6 py-4 text-center text-lg font-semibold text-white transition-colors hover:bg-(--color-primary-hover)"
 		>
 			Continue to Full Assessment &rarr;
 		</a>
 		<a
-			href="/configure"
+			href={resolve('/configure')}
 			class="flex-1 rounded-xl border-2 border-(--color-border) px-6 py-4 text-center text-lg font-semibold transition-colors hover:border-(--color-primary)/50"
 		>
 			I already know what I want &rarr;

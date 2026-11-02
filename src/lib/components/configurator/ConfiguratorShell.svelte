@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { configurator } from '$lib/stores/configurator';
@@ -13,7 +14,7 @@
 
 	let { children } = $props();
 
-	let currentIndex = $derived(CONFIGURATOR_STEPS.findIndex((s) => page.url.pathname === s.path));
+	let currentIndex = $derived(CONFIGURATOR_STEPS.findIndex((s) => page.route.id === s.path));
 	let isFirst = $derived(currentIndex <= 0);
 	let isLast = $derived(currentIndex >= CONFIGURATOR_STEPS.length - 1);
 	let progress = $derived(((currentIndex + 1) / CONFIGURATOR_STEPS.length) * 100);
@@ -29,15 +30,15 @@
 	}
 
 	function goBack() {
-		if (!isFirst) goto(CONFIGURATOR_STEPS[currentIndex - 1].path);
+		if (!isFirst) goto(resolve(CONFIGURATOR_STEPS[currentIndex - 1].path));
 	}
 
 	function goNext() {
-		if (!isLast && canReachStep(currentIndex + 1)) goto(CONFIGURATOR_STEPS[currentIndex + 1].path);
+		if (!isLast && canReachStep(currentIndex + 1)) goto(resolve(CONFIGURATOR_STEPS[currentIndex + 1].path));
 	}
 
 	function goToStep(index: number) {
-		if (canReachStep(index)) goto(CONFIGURATOR_STEPS[index].path);
+		if (canReachStep(index)) goto(resolve(CONFIGURATOR_STEPS[index].path));
 	}
 </script>
 

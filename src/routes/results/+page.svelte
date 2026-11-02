@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { assessment } from '$lib/stores/assessment';
 	import { defaults } from '$lib/stores/defaults';
@@ -10,7 +11,7 @@
 	import { estimateHardwareCost } from '$lib/calc/hardware';
 	import { analyzeRisk } from '$lib/calc/risk';
 	import { calcBreakEven } from '$lib/calc/breakeven';
-	import { calcMonthlySaasCost, calcMonthlySelfHostedCost } from '$lib/calc/saas';
+	import { calcMonthlySaasCost, calcSelfHostedBreakdown } from '$lib/calc/saas';
 	import { generateRecommendation } from '$lib/calc/recommendation';
 	import { mapAssessmentToConfigurator } from '$lib/calc/bridge';
 	import BarChart from '$lib/components/results/BarChart.svelte';
@@ -18,8 +19,9 @@
 
 	function jumpToConfigurator() {
 		const state = mapAssessmentToConfigurator($assessment);
-		configurator.set(state);
-		goto('/configure/service-select');
+		// Keep existing secrets so regenerating doesn't lock users out of initialized databases
+		configurator.set({ ...state, generatedSecrets: $configurator.generatedSecrets });
+		goto(resolve('/configure/service-select'));
 	}
 
 	let isBeginner = $derived($assessment.skillLevel === 'beginner');
@@ -31,22 +33,21 @@
 	let hardware = $derived(estimateHardwareCost($assessment, $defaults, storage));
 	let risk = $derived(analyzeRisk($assessment, $defaults, storage.withHeadroomGB));
 	let monthlySaas = $derived(calcMonthlySaasCost($assessment));
-	let monthlySelfHosted = $derived(calcMonthlySelfHostedCost($assessment, electricityCost, $defaults));
+	let selfHostedBreakdown = $derived(calcSelfHostedBreakdown($assessment, electricityCost, $defaults));
+	let monthlySelfHosted = $derived(selfHostedBreakdown.total);
 	let breakEven = $derived(
 		calcBreakEven(monthlySaas, monthlySelfHosted, hardware.total, risk.annualizedReplacementCost, $defaults)
 	);
 	let recommendation = $derived(generateRecommendation($assessment, monthlySaas, breakEven));
 
 	let streamers = $derived(Math.max($assessment.householdSize, $assessment.concurrentStreams));
-	let min1080p = $derived(Math.max(STREAM_4K_MBPS, streamers * STREAM_1080P_MBPS));
+	let min1080p = $derived(streamers * STREAM_1080P_MBPS);
 	let min4k = $derived(streamers * STREAM_4K_MBPS);
 
 	let monthlySavings = $derived(monthlySaas - monthlySelfHosted);
-	let vpnCost = $derived(
-		$assessment.vpnService?.enabled ? $assessment.vpnService.monthlyCost : 0
-	);
-	let domainCost = $derived($assessment.wantsDomain ? 1 : 0); // ~$12/yr
-	let offsiteCost = $derived(monthlySelfHosted - electricityCost - vpnCost - domainCost);
+	let vpnCost = $derived(selfHostedBreakdown.vpn);
+	let domainCost = $derived(selfHostedBreakdown.domain);
+	let offsiteCost = $derived(selfHostedBreakdown.offsite);
 
 	const RISK_COLORS: Record<string, string> = {
 		low: '#22c55e',
@@ -417,7 +418,7 @@
 				</button>
 			{/if}
 			<a
-				href="/assess/about-you"
+				href={resolve('/assess/about-you')}
 				class="rounded-lg border border-(--color-border) px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-(--color-surface)"
 			>
 				Edit Answers

@@ -5,16 +5,16 @@ import { type CalculationDefaults, FACTORY_DEFAULTS } from '$lib/types/defaults'
 const STORAGE_KEY = 'selfhost-defaults';
 
 function loadFromStorage(): CalculationDefaults {
-	if (!browser) return FACTORY_DEFAULTS;
+	if (!browser) return structuredClone(FACTORY_DEFAULTS);
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
 		if (stored) {
-			return { ...FACTORY_DEFAULTS, ...JSON.parse(stored) };
+			return { ...structuredClone(FACTORY_DEFAULTS), ...JSON.parse(stored) };
 		}
 	} catch {
 		// Ignore corrupt data
 	}
-	return FACTORY_DEFAULTS;
+	return structuredClone(FACTORY_DEFAULTS);
 }
 
 function createDefaultsStore() {
@@ -31,7 +31,7 @@ function createDefaultsStore() {
 		set,
 		update,
 		reset() {
-			set({ ...FACTORY_DEFAULTS });
+			set(structuredClone(FACTORY_DEFAULTS));
 		}
 	};
 }

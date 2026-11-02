@@ -287,9 +287,9 @@
 						<span class="font-mono text-xs text-(--color-text-muted)">
 							{#if svc.ports.length > 0}
 								{#if svc.vpnRouted && hasVpnRouted}
-									via gluetun {svc.ports.map((p) => `:${p.host}`).join(', ')}
+									via gluetun {[...new Set(svc.ports.map((p) => `:${p.host}`))].join(', ')}
 								{:else}
-									{svc.ports.map((p) => `:${p.host}`).join(', ')}
+									{[...new Set(svc.ports.map((p) => `:${p.host}`))].join(', ')}
 								{/if}
 							{:else}
 								—

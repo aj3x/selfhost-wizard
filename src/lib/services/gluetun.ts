@@ -9,7 +9,7 @@ export const gluetun: ServiceModule = {
 	requires: [],
 	recommends: [],
 	conflicts: [],
-	networks: ['vpn'],
+	networks: ['vpn', 'media'],
 	ports: [],
 	environment: [
 		{ key: 'TZ', value: '${TZ}' }
@@ -21,7 +21,6 @@ export const gluetun: ServiceModule = {
 			'TZ=${TZ}'
 		];
 
-		const provider = config.env.VPN_PROVIDER || 'mullvad';
 		const vpnType = config.env.VPN_TYPE || 'wireguard';
 		environment.push(`VPN_TYPE=${vpnType}`);
 
@@ -49,7 +48,8 @@ export const gluetun: ServiceModule = {
 			volumes: ['${CONFIG_DIR}/gluetun:/gluetun'],
 			ports,
 			restart: 'unless-stopped',
-			networks: ['vpn'],
+			// Joins media so *arr services can reach VPN-routed download clients
+			networks: ['vpn', 'media'],
 			healthcheck: {
 				test: ['CMD', '/gluetun-entrypoint', 'healthcheck'],
 				interval: '30s',

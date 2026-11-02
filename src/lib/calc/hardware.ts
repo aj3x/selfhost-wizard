@@ -10,15 +10,6 @@ export interface HardwareCostBreakdown {
 	deviceLabel: string;
 }
 
-/** Estimate the number of drives and cost for needed storage */
-function storageCost(neededGB: number, existingGB: number, defaults: CalculationDefaults): number {
-	const additionalGB = Math.max(0, neededGB - existingGB);
-	if (additionalGB <= 0) return 0;
-	const additionalTB = additionalGB / 1000;
-	return Math.ceil(additionalTB) * defaults.hddPricePerTB * 1000 / 1000; // price per TB
-	// Simplify: just price per TB * TB needed (rounded up to whole drives)
-}
-
 export function estimateHardwareCost(
 	state: AssessmentState,
 	defaults: CalculationDefaults,
@@ -42,7 +33,7 @@ export function estimateHardwareCost(
 		} else if (wantsML || totalStorageTB > 8) {
 			device = 400;
 			deviceLabel = 'Mini PC (N305)';
-		} else if (state.skillLevel === 'beginner' && totalStorageTB <= 8) {
+		} else if (state.skillLevel === 'beginner') {
 			device = 350;
 			deviceLabel = 'Pre-built NAS (2-bay)';
 		} else {
@@ -61,7 +52,6 @@ export function estimateHardwareCost(
 	// Accessories
 	let accessories = 0;
 	if (state.wantsUPS && !state.byod.hasUPS) accessories += 80;
-	if (state.wantsDomain) accessories += defaults.domainAnnualCost; // first year
 
 	return {
 		device,

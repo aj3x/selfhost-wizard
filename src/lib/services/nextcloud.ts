@@ -10,7 +10,7 @@ export const nextcloud: ServiceModule = {
 	recommends: [],
 	conflicts: [],
 	networks: ['nextcloud'],
-	ports: [{ host: 8443, container: 443 }],
+	ports: [{ host: 8443, container: 80 }],
 	environment: [
 		{ key: 'NC_DB_PASSWORD', description: 'Nextcloud database password', required: true, secret: true }
 	],
@@ -31,7 +31,7 @@ export const nextcloud: ServiceModule = {
 					'${CONFIG_DIR}/nextcloud:/var/www/html',
 					'${FILES_DIR}:/var/www/html/data'
 				],
-				ports: ['8443:443'],
+				ports: ['8443:80'],
 				depends_on: ['nextcloud-db'],
 				restart: 'unless-stopped',
 				networks: ['nextcloud']

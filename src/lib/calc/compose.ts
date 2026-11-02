@@ -2,16 +2,40 @@ import type {
 	ConfiguratorState,
 	ServiceConfig,
 	ComposeService,
-	GeneratedOutput,
-	DockerNetwork
+	GeneratedOutput
 } from '$lib/types/configurator';
-import { getService, findService } from '$lib/services/registry';
-import { configurator } from '$lib/stores/configurator';
+import { findService } from '$lib/services/registry';
+
+/** Reverse proxy targets: compose service name and container port, not the host port */
+const PROXY_TARGETS: Record<string, { sub: string; service: string; port: number }> = {
+	jellyfin: { sub: 'media', service: 'jellyfin', port: 8096 },
+	plex: { sub: 'plex', service: 'plex', port: 32400 },
+	sonarr: { sub: 'sonarr', service: 'sonarr', port: 8989 },
+	radarr: { sub: 'radarr', service: 'radarr', port: 7878 },
+	prowlarr: { sub: 'prowlarr', service: 'prowlarr', port: 9696 },
+	seerr: { sub: 'requests', service: 'seerr', port: 5055 },
+	ombi: { sub: 'requests', service: 'ombi', port: 3579 },
+	immich: { sub: 'photos', service: 'immich-server', port: 2283 },
+	photoprism: { sub: 'photos', service: 'photoprism', port: 2342 },
+	nextcloud: { sub: 'files', service: 'nextcloud', port: 80 },
+	homepage: { sub: 'home', service: 'homepage', port: 3000 },
+	portainer: { sub: 'portainer', service: 'portainer', port: 9000 },
+	vaultwarden: { sub: 'vault', service: 'vaultwarden', port: 80 },
+	paperless: { sub: 'docs', service: 'paperless', port: 8000 },
+	mealie: { sub: 'recipes', service: 'mealie', port: 9000 },
+	'uptime-kuma': { sub: 'status', service: 'uptime-kuma', port: 3001 },
+	adguard: { sub: 'adguard', service: 'adguard', port: 80 },
+	'home-assistant': { sub: 'hass', service: 'home-assistant', port: 8123 }
+};
+
+const HOST_GATEWAY = 'host.docker.internal';
+
+const MEDIA_CATEGORIES = ['media-server', 'media-management', 'download-client', 'media-processing'];
 
 /**
  * Build a ServiceConfig from the configurator state.
  */
-function buildServiceConfig(state: ConfiguratorState, serviceId: string): ServiceConfig {
+function buildServiceConfig(state: ConfiguratorState, serviceId: string, allIds: string[]): ServiceConfig {
 	const gc = state.globalConfig;
 	return {
 		puid: gc.puid,
@@ -24,7 +48,7 @@ function buildServiceConfig(state: ConfiguratorState, serviceId: string): Servic
 		filesDir: gc.filesDir,
 		backupDir: gc.backupDir,
 		env: {
-			...gc.vpnEnv,
+			...(serviceId === 'gluetun' ? gc.vpnEnv : {}),
 			...(state.serviceEnv[serviceId] || {}),
 			VPN_PROVIDER: gc.vpnProvider || '',
 			VPN_TYPE: gc.vpnType,
@@ -32,9 +56,9 @@ function buildServiceConfig(state: ConfiguratorState, serviceId: string): Servic
 			HOSTNAME: gc.hostname
 		},
 		features: {
-			music: getAllServiceIds(state).includes('lidarr'),
+			music: allIds.includes('lidarr'),
 			gpuTranscoding: (state.serviceEnv['global']?.GPU_TRANSCODING === 'true'),
-			vpnEnabled: getAllServiceIds(state).includes('gluetun')
+			vpnEnabled: allIds.includes('gluetun')
 		}
 	};
 }
@@ -55,7 +79,7 @@ export function generateCompose(state: ConfiguratorState): Record<string, Compos
 		const svc = findService(id);
 		if (!svc) continue;
 
-		const config = buildServiceConfig(state, id);
+		const config = buildServiceConfig(state, id, allIds);
 		const fragments = svc.compose(config);
 
 		for (const [name, fragment] of Object.entries(fragments)) {
@@ -66,11 +90,7 @@ export function generateCompose(state: ConfiguratorState): Record<string, Compos
 		// Read from static metadata since the compose function strips ports when VPN is enabled
 		if (svc.vpnRouted && config.features.vpnEnabled) {
 			for (const p of svc.ports) {
-				const proto = p.protocol || 'tcp';
-				vpnRoutedPorts.push(`${p.host}:${p.container}`);
-				if (proto === 'udp' || id === 'qbittorrent') {
-					vpnRoutedPorts.push(`${p.host}:${p.container}/udp`);
-				}
+				vpnRoutedPorts.push(`${p.host}:${p.container}${p.protocol === 'udp' ? '/udp' : ''}`);
 			}
 		}
 	}
@@ -80,7 +100,39 @@ export function generateCompose(state: ConfiguratorState): Record<string, Compos
 		services.gluetun.ports = [...(services.gluetun.ports || []), ...vpnRoutedPorts];
 	}
 
+	connectReverseProxies(services, allIds);
+
 	return services;
+}
+
+/**
+ * Put reverse proxies on the networks of the services they front, since each
+ * stack is otherwise isolated on its own network. Host-mode services are
+ * reached through the Docker host gateway.
+ */
+function connectReverseProxies(services: Record<string, ComposeService>, allIds: string[]): void {
+	const networks = new Set<string>();
+	let needsHostGateway = false;
+
+	for (const id of allIds) {
+		const target = PROXY_TARGETS[id];
+		const svc = target && services[target.service];
+		if (!svc) continue;
+
+		if (svc.network_mode === 'host') {
+			needsHostGateway = true;
+		} else if (svc.networks?.length) {
+			svc.networks.forEach((n) => networks.add(n));
+		} else {
+			networks.add('default');
+		}
+	}
+
+	for (const proxy of [services.caddy, services['nginx-proxy-manager']]) {
+		if (!proxy) continue;
+		proxy.networks = [...new Set([...(proxy.networks ?? []), ...networks])];
+		if (needsHostGateway) proxy.extra_hosts = [`${HOST_GATEWAY}:host-gateway`];
+	}
 }
 
 /**
@@ -91,11 +143,22 @@ export function collectNetworks(services: Record<string, ComposeService>): strin
 	for (const svc of Object.values(services)) {
 		if (svc.networks) {
 			for (const net of svc.networks) {
-				networks.add(net);
+				// Compose provides the default network implicitly
+				if (net !== 'default') networks.add(net);
 			}
 		}
 	}
 	return [...networks].sort();
+}
+
+/** Quote a user-provided .env value so compose reads it literally */
+function envValue(value: string): string {
+	return /^[\w@%+=:,./-]*$/.test(value) ? value : `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+/** Resolve a secret: the user's override wins over the generated value */
+function getSecret(state: ConfiguratorState, serviceId: string, key: string): string {
+	return envValue(state.serviceEnv[serviceId]?.[key] || state.generatedSecrets[key] || '');
 }
 
 /**
@@ -135,7 +198,7 @@ export function generateEnvFile(state: ConfiguratorState): string {
 		if (gc.vpnCountry) lines.push(`VPN_COUNTRY=${gc.vpnCountry}`);
 		for (const [key, val] of Object.entries(gc.vpnEnv)) {
 			if (key === 'VPN_SERVICE_PROVIDER') continue;
-			lines.push(`${key}=${val}`);
+			lines.push(`${key}=${envValue(val)}`);
 		}
 	}
 
@@ -150,39 +213,42 @@ export function generateEnvFile(state: ConfiguratorState): string {
 	if (allIds.includes('plex')) {
 		const plexClaim = state.serviceEnv['plex']?.PLEX_CLAIM || '';
 		lines.push('', '# ── Plex ──');
-		lines.push(`PLEX_CLAIM=${plexClaim}`);
+		lines.push(`PLEX_CLAIM=${envValue(plexClaim)}`);
 	}
 
 	// Tailscale
 	if (allIds.includes('tailscale')) {
 		const authKey = state.serviceEnv['tailscale']?.TS_AUTHKEY || 'your-tailscale-auth-key';
 		lines.push('', '# ── Tailscale ──');
-		lines.push(`TS_AUTHKEY=${authKey}`);
+		lines.push(`TS_AUTHKEY=${envValue(authKey)}`);
 	}
 
 	// Immich DB
 	if (allIds.includes('immich')) {
-		const dbPass = state.serviceEnv['immich']?.IMMICH_DB_PASSWORD || getStableSecret(state, 'IMMICH_DB_PASSWORD');
 		lines.push('', '# ── Immich ──');
-		lines.push(`IMMICH_DB_PASSWORD=${dbPass}`);
+		lines.push(`IMMICH_DB_PASSWORD=${getSecret(state, 'immich', 'IMMICH_DB_PASSWORD')}`);
 		lines.push('IMMICH_DB_USER=postgres');
 		lines.push('IMMICH_DB_NAME=immich');
 	}
 
 	// Nextcloud DB
 	if (allIds.includes('nextcloud')) {
-		const dbPass = state.serviceEnv['nextcloud']?.NC_DB_PASSWORD || getStableSecret(state, 'NC_DB_PASSWORD');
 		lines.push('', '# ── Nextcloud ──');
-		lines.push(`NC_DB_PASSWORD=${dbPass}`);
+		lines.push(`NC_DB_PASSWORD=${getSecret(state, 'nextcloud', 'NC_DB_PASSWORD')}`);
 		lines.push('NC_DB_USER=nextcloud');
 		lines.push('NC_DB_NAME=nextcloud');
 	}
 
 	// Paperless DB
 	if (allIds.includes('paperless')) {
-		const dbPass = state.serviceEnv['paperless']?.PAPERLESS_DB_PASSWORD || getStableSecret(state, 'PAPERLESS_DB_PASSWORD');
 		lines.push('', '# ── Paperless ──');
-		lines.push(`PAPERLESS_DB_PASSWORD=${dbPass}`);
+		lines.push(`PAPERLESS_DB_PASSWORD=${getSecret(state, 'paperless', 'PAPERLESS_DB_PASSWORD')}`);
+	}
+
+	// PhotoPrism admin
+	if (allIds.includes('photoprism')) {
+		lines.push('', '# ── PhotoPrism ──');
+		lines.push(`PHOTOPRISM_ADMIN_PASSWORD=${getSecret(state, 'photoprism', 'PHOTOPRISM_ADMIN_PASSWORD')}`);
 	}
 
 	return lines.join('\n') + '\n';
@@ -194,38 +260,37 @@ export function generateEnvFile(state: ConfiguratorState): string {
 export function generateSetupScript(state: ConfiguratorState): string {
 	const gc = state.globalConfig;
 	const allIds = getAllServiceIds(state);
-	const dirs: string[] = [
-		gc.configDir.replace('${BASE_DIR}', gc.baseDir),
-		gc.mediaDir.replace('${BASE_DIR}', gc.baseDir),
-	];
+	const expand = (dir: string) => dir.replace('${BASE_DIR}', gc.baseDir);
+	const configBase = expand(gc.configDir);
+	const mediaBase = expand(gc.mediaDir);
+	const filesBase = expand(gc.filesDir);
+	const dirs: string[] = [configBase, mediaBase];
 
 	// Add service-specific config dirs
 	for (const id of allIds) {
-		const svc = findService(id);
-		if (svc) {
-			dirs.push(`${gc.configDir.replace('${BASE_DIR}', gc.baseDir)}/${id}`);
-		}
+		if (findService(id)) dirs.push(`${configBase}/${id}`);
 	}
 
 	// Add media subdirs
-	if (allIds.some((id) => ['sonarr', 'radarr', 'jellyfin', 'plex', 'bazarr', 'tdarr'].includes(id))) {
-		const mediaBase = gc.mediaDir.replace('${BASE_DIR}', gc.baseDir);
+	if (allIds.some((id) => MEDIA_CATEGORIES.includes(findService(id)?.category ?? ''))) {
 		dirs.push(`${mediaBase}/movies`, `${mediaBase}/tv`, `${mediaBase}/downloads`, `${mediaBase}/downloads/complete`, `${mediaBase}/downloads/incomplete`);
 		if (allIds.includes('lidarr')) {
 			dirs.push(`${mediaBase}/music`);
 		}
 	}
 
-	if (allIds.includes('immich')) {
-		dirs.push(gc.photoDir.replace('${BASE_DIR}', gc.baseDir));
+	if (allIds.some((id) => ['immich', 'photoprism'].includes(id))) {
+		dirs.push(expand(gc.photoDir));
 	}
 
-	if (allIds.some((id) => ['nextcloud', 'syncthing', 'filebrowser'].includes(id))) {
-		dirs.push(gc.filesDir.replace('${BASE_DIR}', gc.baseDir));
+	if (allIds.some((id) => ['nextcloud', 'syncthing', 'filebrowser', 'paperless'].includes(id))) {
+		dirs.push(filesBase);
 	}
+	if (allIds.includes('syncthing')) dirs.push(`${filesBase}/sync`);
+	if (allIds.includes('paperless')) dirs.push(`${filesBase}/paperless/consume`);
 
 	if (allIds.some((id) => ['duplicati', 'kopia'].includes(id))) {
-		dirs.push(gc.backupDir.replace('${BASE_DIR}', gc.baseDir));
+		dirs.push(expand(gc.backupDir));
 	}
 
 	const uniqueDirs = [...new Set(dirs)].sort();
@@ -236,6 +301,9 @@ export function generateSetupScript(state: ConfiguratorState): string {
 		'# Generated automatically. Review before running.',
 		'',
 		'set -euo pipefail',
+		'',
+		'# Run from the folder holding docker-compose.yml and .env',
+		'cd "$(dirname "$0")"',
 		'',
 		'# Check for Docker',
 		'if ! command -v docker &> /dev/null; then',
@@ -259,8 +327,24 @@ export function generateSetupScript(state: ConfiguratorState): string {
 		`mkdir -p \\`,
 		...uniqueDirs.map((d, i) => `  "${d}"${i < uniqueDirs.length - 1 ? ' \\' : ''}`),
 		'',
+		// Bind-mounted files must exist first, or Docker creates directories in their place
+		...(allIds.includes('caddy') ? [
+			'if [ -f Caddyfile ]; then',
+			`  cp Caddyfile "${configBase}/caddy/Caddyfile"`,
+			'fi',
+			''
+		] : []),
+		...(allIds.includes('filebrowser') ? [
+			`touch "${configBase}/filebrowser/database.db"`,
+			`if [ ! -f "${configBase}/filebrowser/.filebrowser.json" ]; then`,
+			`  echo '{"port": 80, "baseURL": "", "address": "", "log": "stdout", "database": "/database.db", "root": "/srv"}' > "${configBase}/filebrowser/.filebrowser.json"`,
+			'fi',
+			''
+		] : []),
 		'echo "Setting ownership..."',
-		`chown -R $PUID:$PGID "${gc.baseDir.replace('${BASE_DIR}', gc.baseDir)}"`,
+		// Directories may be customized to live outside the base directory
+		`chown -R "$PUID:$PGID" \\`,
+		...uniqueDirs.map((d, i) => `  "${d}"${i < uniqueDirs.length - 1 ? ' \\' : ''}`),
 		''
 	];
 
@@ -272,6 +356,11 @@ export function generateSetupScript(state: ConfiguratorState): string {
 	if (hasSonarr || hasRadarr || hasRecyclarr) {
 		lines.push(
 			'# ── Auto-configure media services ──',
+			'',
+			'if ! command -v curl &> /dev/null; then',
+			'  echo "ERROR: curl is required to configure media services."',
+			'  exit 1',
+			'fi',
 			'',
 			'echo ""',
 			'echo "Starting containers for initial configuration..."',
@@ -303,55 +392,41 @@ export function generateSetupScript(state: ConfiguratorState): string {
 			'  local config_path="$2"',
 			'  docker exec "$container" cat "$config_path" 2>/dev/null | grep -oP \'(?<=<ApiKey>)[^<]+\' || echo ""',
 			'}',
+			'',
+			'# Set a root folder on an *arr service. Failures never abort the rest of setup.',
+			'configure_root_folder() {',
+			'  local name="$1" container="$2" port="$3" path="$4"',
+			'  # /ping needs no API key, unlike the /api endpoints',
+			'  wait_for_service "$name" "http://localhost:$port/ping" || return 0',
+			'  local key existing',
+			'  key=$(get_api_key "$container" "/config/config.xml")',
+			'  if [ -z "$key" ]; then',
+			'    echo "$name: could not read API key, skipping root folder setup"',
+			'    return 0',
+			'  fi',
+			'  existing=$(curl -sf "http://localhost:$port/api/v3/rootfolder" -H "X-Api-Key: $key" || echo "")',
+			'  if [ "$existing" != "[]" ]; then',
+			'    echo "$name: root folder already configured or unavailable, skipping"',
+			'    return 0',
+			'  fi',
+			'  if curl -sf -X POST "http://localhost:$port/api/v3/rootfolder" \\',
+			'    -H "X-Api-Key: $key" \\',
+			'    -H "Content-Type: application/json" \\',
+			`    -d "{\\"path\\": \\"$path\\"}" > /dev/null; then`,
+			'    echo "$name: root folder set to $path"',
+			'  else',
+			'    echo "$name: could not set root folder, set it manually in the web UI"',
+			'  fi',
+			'}',
 			''
 		);
 
 		if (hasRadarr) {
-			lines.push(
-				'# Configure Radarr root folder',
-				'if wait_for_service "Radarr" "http://localhost:7878/api/v3/system/status"; then',
-				'  RADARR_KEY=$(get_api_key "radarr" "/config/config.xml")',
-				'  if [ -n "$RADARR_KEY" ]; then',
-				`    EXISTING=$(curl -sf "http://localhost:7878/api/v3/rootfolder" -H "X-Api-Key: $RADARR_KEY")`,
-				'    if echo "$EXISTING" | grep -q "\\[\\]"; then',
-				`      curl -sf -X POST "http://localhost:7878/api/v3/rootfolder" \\`,
-				'        -H "X-Api-Key: $RADARR_KEY" \\',
-				'        -H "Content-Type: application/json" \\',
-				`        -d '{"path": "${gc.moviesPath}"}' > /dev/null`,
-				`      echo "Radarr: root folder set to ${gc.moviesPath}"`,
-				'    else',
-				'      echo "Radarr: root folder already configured, skipping"',
-				'    fi',
-				'  else',
-				'    echo "Radarr: could not read API key, skipping root folder setup"',
-				'  fi',
-				'fi',
-				''
-			);
+			lines.push(`configure_root_folder "Radarr" "radarr" 7878 "${gc.moviesPath}"`, '');
 		}
 
 		if (hasSonarr) {
-			lines.push(
-				'# Configure Sonarr root folder',
-				'if wait_for_service "Sonarr" "http://localhost:8989/api/v3/system/status"; then',
-				'  SONARR_KEY=$(get_api_key "sonarr" "/config/config.xml")',
-				'  if [ -n "$SONARR_KEY" ]; then',
-				`    EXISTING=$(curl -sf "http://localhost:8989/api/v3/rootfolder" -H "X-Api-Key: $SONARR_KEY")`,
-				'    if echo "$EXISTING" | grep -q "\\[\\]"; then',
-				`      curl -sf -X POST "http://localhost:8989/api/v3/rootfolder" \\`,
-				'        -H "X-Api-Key: $SONARR_KEY" \\',
-				'        -H "Content-Type: application/json" \\',
-				`        -d '{"path": "${gc.tvPath}"}' > /dev/null`,
-				`      echo "Sonarr: root folder set to ${gc.tvPath}"`,
-				'    else',
-				'      echo "Sonarr: root folder already configured, skipping"',
-				'    fi',
-				'  else',
-				'    echo "Sonarr: could not read API key, skipping root folder setup"',
-				'  fi',
-				'fi',
-				''
-			);
+			lines.push(`configure_root_folder "Sonarr" "sonarr" 8989 "${gc.tvPath}"`, '');
 		}
 
 		if (hasRecyclarr) {
@@ -367,18 +442,17 @@ export function generateSetupScript(state: ConfiguratorState): string {
 	lines.push(
 		'echo ""',
 		'echo "Done! Next steps:"',
-		'echo "  1. Review and edit .env with your credentials"',
 	);
 
 	if (hasSonarr || hasRadarr || hasRecyclarr) {
 		lines.push(
-			'echo "  2. Your containers are already running"',
-			'echo "  3. Access services at the ports listed in docker-compose.yml"'
+			'echo "  1. Your containers are already running"',
+			'echo "  2. Access services at the ports listed in docker-compose.yml"'
 		);
 	} else {
 		lines.push(
-			'echo "  2. Run: docker compose up -d"',
-			'echo "  3. Access services at the ports listed in docker-compose.yml"'
+			'echo "  1. Run: docker compose up -d"',
+			'echo "  2. Access services at the ports listed in docker-compose.yml"'
 		);
 	}
 
@@ -393,7 +467,7 @@ export function toComposeYaml(services: Record<string, ComposeService>, networks
 	const lines: string[] = [];
 
 	lines.push('# Generated by SelfHost Wizard');
-	lines.push('# https://selfhost-wizard.com');
+	lines.push('# https://alexrussell.dev/selfhost-wizard');
 	lines.push('');
 	lines.push('services:');
 
@@ -404,6 +478,13 @@ export function toComposeYaml(services: Record<string, ComposeService>, networks
 
 		if (svc.hostname) {
 			lines.push(`    hostname: ${svc.hostname}`);
+		}
+
+		if (svc.extra_hosts && svc.extra_hosts.length > 0) {
+			lines.push('    extra_hosts:');
+			for (const host of svc.extra_hosts) {
+				lines.push(`      - "${host}"`);
+			}
 		}
 
 		if (svc.network_mode) {
@@ -523,51 +604,24 @@ function generateCaddyfile(
 	state: ConfiguratorState,
 	services: Record<string, ComposeService>
 ): string {
-	const domain = state.globalConfig.domain;
+	const { domain, email } = state.globalConfig;
 	const lines: string[] = [
 		`# Caddyfile generated by SelfHost Wizard`,
 		''
 	];
 
-	// Map services to their primary ports for reverse proxying
-	const proxyServices: { subdomain: string; port: string }[] = [];
-	const allIds = getAllServiceIds(state);
-
-	const portLookup: Record<string, { sub: string; port: number }> = {
-		jellyfin: { sub: 'media', port: 8096 },
-		plex: { sub: 'plex', port: 32400 },
-		sonarr: { sub: 'sonarr', port: 8989 },
-		radarr: { sub: 'radarr', port: 7878 },
-		prowlarr: { sub: 'prowlarr', port: 9696 },
-		seerr: { sub: 'requests', port: 5055 },
-		ombi: { sub: 'requests', port: 3579 },
-		immich: { sub: 'photos', port: 2283 },
-		photoprism: { sub: 'photos', port: 2342 },
-		nextcloud: { sub: 'files', port: 8443 },
-		homepage: { sub: 'home', port: 3000 },
-		portainer: { sub: 'portainer', port: 9000 },
-		vaultwarden: { sub: 'vault', port: 8222 },
-		paperless: { sub: 'docs', port: 8000 },
-		mealie: { sub: 'recipes', port: 9925 },
-		'uptime-kuma': { sub: 'status', port: 3001 },
-		adguard: { sub: 'adguard', port: 8053 },
-		'home-assistant': { sub: 'hass', port: 8123 }
-	};
-
-	const vpnEnabled = allIds.includes('gluetun');
-	for (const id of allIds) {
-		const lookup = portLookup[id];
-		if (lookup) {
-			const svc = findService(id);
-			// VPN-routed services are reachable via gluetun, not their own hostname
-			const target = (svc?.vpnRouted && vpnEnabled) ? `gluetun:${lookup.port}` : `${id}:${lookup.port}`;
-			proxyServices.push({ subdomain: lookup.sub, port: target });
-		}
+	if (email) {
+		lines.push('{', `  email ${email}`, '}', '');
 	}
 
-	for (const { subdomain, port } of proxyServices) {
-		lines.push(`${subdomain}.${domain} {`);
-		lines.push(`  reverse_proxy ${port}`);
+	for (const id of getAllServiceIds(state)) {
+		const target = PROXY_TARGETS[id];
+		const svc = target && services[target.service];
+		if (!svc) continue;
+
+		const host = svc.network_mode === 'host' ? HOST_GATEWAY : target.service;
+		lines.push(`${target.sub}.${domain} {`);
+		lines.push(`  reverse_proxy ${host}:${target.port}`);
 		lines.push('}');
 		lines.push('');
 	}
@@ -580,16 +634,16 @@ function generateReadme(state: ConfiguratorState, allIds: string[]): string {
 	const lines: string[] = [
 		'# SelfHost Wizard — Your Server Setup',
 		'',
-		'Generated by [SelfHost Wizard](https://selfhost-wizard.com)',
+		'Generated by [SelfHost Wizard](https://alexrussell.dev/selfhost-wizard)',
 		'',
 		'## Quick Start',
 		'',
 		'```bash',
-		'# 1. Create directory structure',
-		'sudo bash setup.sh',
-		'',
-		'# 2. Edit .env with your credentials',
+		'# 1. Edit .env with your credentials',
 		'nano .env',
+		'',
+		'# 2. Create directory structure',
+		'sudo bash setup.sh',
 		'',
 		'# 3. Start all services',
 		'docker compose up -d',
@@ -617,15 +671,4 @@ function generateReadme(state: ConfiguratorState, allIds: string[]): string {
 	}
 
 	return lines.join('\n') + '\n';
-}
-
-/**
- * Get a stable secret from the store, generating one if it doesn't exist.
- * This ensures passwords don't change on every render.
- */
-function getStableSecret(state: ConfiguratorState, key: string): string {
-	if (state.generatedSecrets[key]) {
-		return state.generatedSecrets[key];
-	}
-	return configurator.getOrCreateSecret(key);
 }

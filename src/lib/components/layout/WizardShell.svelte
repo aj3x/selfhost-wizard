@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { assessment } from '$lib/stores/assessment';
@@ -17,7 +18,7 @@
 
 	let { children } = $props();
 
-	let currentIndex = $derived(WIZARD_STEPS.findIndex((s) => page.url.pathname === s.path));
+	let currentIndex = $derived(WIZARD_STEPS.findIndex((s) => page.route.id === s.path));
 	let isFirst = $derived(currentIndex <= 0);
 	let isLast = $derived(currentIndex >= WIZARD_STEPS.length - 1);
 	let progress = $derived(((currentIndex + 1) / WIZARD_STEPS.length) * 100);
@@ -25,17 +26,17 @@
 
 	function goBack() {
 		if (isFirst) {
-			goto('/assess/quick-start');
+			goto(resolve('/assess/quick-start'));
 		} else {
-			goto(WIZARD_STEPS[currentIndex - 1].path);
+			goto(resolve(WIZARD_STEPS[currentIndex - 1].path));
 		}
 	}
 
 	function goNext() {
 		if (isLast) {
-			goto('/results');
+			goto(resolve('/results'));
 		} else {
-			goto(WIZARD_STEPS[currentIndex + 1].path);
+			goto(resolve(WIZARD_STEPS[currentIndex + 1].path));
 		}
 	}
 
@@ -57,7 +58,7 @@
 		</span>
 		<div class="flex items-center gap-3">
 			<a
-				href="/assess/quick-start"
+				href={resolve('/assess/quick-start')}
 				class="text-xs text-(--color-primary) hover:underline"
 			>
 				Quick Start Tips
@@ -79,7 +80,7 @@
 	<div class="mb-8 hidden gap-1 md:flex">
 		{#each WIZARD_STEPS as step, i}
 			<button
-				onclick={() => goto(step.path)}
+				onclick={() => goto(resolve(step.path))}
 				class="flex-1 rounded px-1 py-1.5 text-center text-xs transition-colors
 					{i === currentIndex
 					? 'bg-(--color-primary) text-white font-medium'

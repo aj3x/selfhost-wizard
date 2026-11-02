@@ -1,4 +1,5 @@
-import type { AssessmentState } from '$lib/types/assessment';
+import { CURRENCY_SYMBOLS, type AssessmentState } from '$lib/types/assessment';
+import { STREAM_1080P_MBPS } from '$lib/types/configurator';
 import type { BreakEvenResult } from './breakeven';
 
 export type RecommendationTier =
@@ -34,6 +35,23 @@ export function generateRecommendation(
 		};
 	}
 
+	// Determine scope
+	const wantsMedia = state.wantsMedia;
+	const wantsPhotos = state.photoBackupIntent !== 'no';
+	const wantsFiles = state.wantsFileSync;
+	const featureCount = [wantsMedia, wantsPhotos, wantsFiles].filter(Boolean).length;
+
+	// Nothing self-hosting would address
+	if (featureCount === 0) {
+		return {
+			tier: 'stick_with_saas',
+			title: 'Self-Hosting May Not Be For You (Yet)',
+			summary:
+				"Based on your answers, you don't have strong needs that self-hosting would address. Check back when your needs or spending change.",
+			reasons: ["You haven't selected media, photos, or file sync needs."]
+		};
+	}
+
 	// Very time-constrained + beginner
 	if (state.setupTimeBudget === 'hours' && state.skillLevel === 'beginner' && state.breakTolerance === 'low') {
 		reasons.push("Limited time and low tolerance for troubleshooting.");
@@ -48,8 +66,9 @@ export function generateRecommendation(
 	}
 
 	// Cloud-hosted: high remote needs, slow upload, low time tolerance, but significant spending
-	const minUploadNeeded = Math.max(10, state.concurrentStreams * 8);
+	const minUploadNeeded = Math.max(STREAM_1080P_MBPS, state.concurrentStreams * STREAM_1080P_MBPS);
 	if (
+		state.wantsMedia &&
 		(state.remoteAccess === 'regular' || state.remoteAccess === 'share') &&
 		state.uploadSpeed < minUploadNeeded &&
 		monthlySaasCost >= 30
@@ -66,8 +85,7 @@ export function generateRecommendation(
 	}
 
 	// Upload speed too low for sharing
-	const minShareUpload = Math.max(10, state.concurrentStreams * 5);
-	if (state.remoteAccess === 'share' && state.uploadSpeed < minShareUpload) {
+	if (state.wantsMedia && state.remoteAccess === 'share' && state.uploadSpeed < minUploadNeeded) {
 		reasons.push(`Your upload speed (${state.uploadSpeed} Mbps) may limit sharing media with ${state.concurrentStreams} people remotely.`);
 	}
 
@@ -85,15 +103,9 @@ export function generateRecommendation(
 	// 5-year savings
 	if (breakEven.fiveYearSavings > 500) {
 		reasons.push(
-			`Projected 5-year savings: $${Math.round(breakEven.fiveYearSavings)}.`
+			`Projected 5-year savings: ${CURRENCY_SYMBOLS[state.currency]}${Math.round(breakEven.fiveYearSavings)}.`
 		);
 	}
-
-	// Determine scope
-	const wantsMedia = state.wantsMedia;
-	const wantsPhotos = state.photoBackupIntent !== 'no';
-	const wantsFiles = state.wantsFileSync;
-	const featureCount = [wantsMedia, wantsPhotos, wantsFiles].filter(Boolean).length;
 
 	if (featureCount >= 2 && (state.skillLevel === 'intermediate' || state.skillLevel === 'advanced')) {
 		reasons.push('You want multiple services and have the skills to manage them.');
@@ -106,34 +118,23 @@ export function generateRecommendation(
 		};
 	}
 
-	if (featureCount >= 1) {
-		if (state.skillLevel === 'beginner') {
-			reasons.push('Starting with a focused setup keeps things manageable.');
-			return {
-				tier: 'managed_nas',
-				title: 'Start with a Managed NAS',
-				summary:
-					"A Synology or similar NAS handles your needs with a friendly UI. You can always move to Docker later as you gain confidence.",
-				reasons
-			};
-		}
-
-		reasons.push('A focused Docker setup is a great starting point.');
+	if (state.skillLevel === 'beginner') {
+		reasons.push('Starting with a focused setup keeps things manageable.');
 		return {
-			tier: 'diy_simple',
-			title: 'Simple Docker Setup',
+			tier: 'managed_nas',
+			title: 'Start with a Managed NAS',
 			summary:
-				'A lightweight Docker Compose stack focused on what you need most. Our configurator will generate everything for you.',
+				"A Synology or similar NAS handles your needs with a friendly UI. You can always move to Docker later as you gain confidence.",
 			reasons
 		};
 	}
 
-	// Fallback
+	reasons.push('A focused Docker setup is a great starting point.');
 	return {
-		tier: 'stick_with_saas',
-		title: 'Self-Hosting May Not Be For You (Yet)',
+		tier: 'diy_simple',
+		title: 'Simple Docker Setup',
 		summary:
-			"Based on your answers, you don't have strong needs that self-hosting would address. Check back when your needs or spending change.",
-		reasons: ["You haven't selected media, photos, or file sync needs."]
+			'A lightweight Docker Compose stack focused on what you need most. Our configurator will generate everything for you.',
+		reasons
 	};
 }

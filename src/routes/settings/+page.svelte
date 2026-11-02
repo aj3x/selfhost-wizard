@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { defaults } from '$lib/stores/defaults';
 	import { assessment } from '$lib/stores/assessment';
 	import { FACTORY_DEFAULTS, type CalculationDefaults } from '$lib/types/defaults';
@@ -220,6 +221,6 @@
 	{/each}
 
 	<div class="mt-4 text-center">
-		<a href="/results" class="text-sm text-(--color-primary) hover:underline">Back to Results &rarr;</a>
+		<a href={resolve('/results')} class="text-sm text-(--color-primary) hover:underline">Back to Results &rarr;</a>
 	</div>
 </div>

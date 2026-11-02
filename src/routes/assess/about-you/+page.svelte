@@ -12,7 +12,7 @@
 	let isBeginner = $derived($assessment.skillLevel === 'beginner');
 
 	// Streaming bandwidth requirements (configurable constants)
-	let min1080p = $derived(Math.max(STREAM_4K_MBPS, $assessment.householdSize * STREAM_1080P_MBPS));
+	let min1080p = $derived($assessment.householdSize * STREAM_1080P_MBPS);
 	let min4k = $derived($assessment.householdSize * STREAM_4K_MBPS);
 
 	function setLocation(key: string) {

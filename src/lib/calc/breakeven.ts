@@ -34,12 +34,13 @@ export function calcBreakEven(
 	let selfHostedCumulative = upfrontCost;
 
 	for (let m = 0; m <= months; m++) {
+		const inflatedSaasCost = monthlySaasCost * Math.pow(1 + defaults.saasPriceInflationAnnual, m / 12);
 		cumulativeCosts.push({
 			month: m,
 			saas: Math.round(saasCumulative),
 			selfHosted: Math.round(selfHostedCumulative)
 		});
-		saasCumulative += monthlySaasCost * (1 + defaults.saasPriceInflationAnnual / 12);
+		saasCumulative += inflatedSaasCost;
 		selfHostedCumulative += monthlySelfHostedCost + monthlyDriveReplacement;
 	}
 

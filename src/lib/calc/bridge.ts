@@ -12,28 +12,29 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 	// Media stack
 	if (assessment.wantsMedia) {
 		services.push('jellyfin'); // default media server (free, no account needed)
-		services.push('sonarr', 'radarr', 'prowlarr');
-		services.push('seerr'); // media requests
 
-		if (assessment.automationLevel === 'full' || assessment.automationLevel === 'semi') {
+		// Manual libraries don't need the download stack
+		if (assessment.automationLevel !== 'manual') {
+			services.push('sonarr', 'radarr', 'prowlarr');
+			services.push('seerr'); // media requests
 			services.push('qbittorrent');
 			services.push('gluetun'); // VPN for downloads
-		}
 
-		if (assessment.videoQuality === '4k' || assessment.videoQuality === '4k_hdr') {
-			services.push('bazarr'); // subtitles more important at 4K
+			if (assessment.videoQuality === '4k' || assessment.videoQuality === '4k_hdr') {
+				services.push('bazarr'); // subtitles more important at 4K
+			}
+
+			if (assessment.wantsMusic) {
+				services.push('lidarr');
+			}
+
+			if (assessment.skillLevel !== 'beginner') {
+				services.push('recyclarr');
+			}
 		}
 
 		if (assessment.needsTranscoding) {
 			services.push('tdarr');
-		}
-
-		if (assessment.wantsMusic) {
-			services.push('lidarr');
-		}
-
-		if (assessment.skillLevel !== 'beginner') {
-			services.push('recyclarr');
 		}
 	}
 
@@ -113,15 +114,13 @@ export function mapAssessmentToConfigurator(assessment: AssessmentState): Config
 	const globalConfig: GlobalConfig = {
 		...DEFAULT_GLOBAL_CONFIG,
 		vpnProvider,
-		vpnType: vpnProvider === 'mullvad' || vpnProvider === 'surfshark' ? 'wireguard' : 'openvpn',
-		domain: assessment.wantsDomain ? '' : '' // user will fill in
+		vpnType: vpnProvider === 'mullvad' || vpnProvider === 'surfshark' ? 'wireguard' : 'openvpn'
 	};
 
 	return {
 		...DEFAULT_CONFIGURATOR_STATE,
 		selectedServices: uniqueServices,
 		globalConfig,
-		fromAssessment: true,
-		generatedSecrets: {}
+		fromAssessment: true
 	};
 }

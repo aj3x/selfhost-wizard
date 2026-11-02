@@ -1,5 +1,5 @@
 import type { DependencyRule, ValidationError, PortConflict, ConfiguratorState } from '$lib/types/configurator';
-import { getService, findService, getAllServices } from '$lib/services/registry';
+import { getService, findService } from '$lib/services/registry';
 
 export interface UnmetDependency {
 	/** The service that has unmet deps */
@@ -155,9 +155,6 @@ export function detectPortConflicts(selectedIds: string[]): PortConflict[] {
 		const svc = findService(id);
 		if (!svc) continue;
 
-		// Skip VPN-routed services (their ports move to gluetun)
-		if (svc.vpnRouted && selectedIds.includes('gluetun')) continue;
-
 		for (const port of svc.ports) {
 			const proto = port.protocol || 'tcp';
 			const key = `${port.host}/${proto}`;
@@ -260,13 +257,18 @@ export function validate(state: ConfiguratorState): ValidationError[] {
 		}
 	}
 
-	// Check required passwords are set for multi-container services
-	if (allIds.includes('immich') && !state.serviceEnv['immich']?.IMMICH_DB_PASSWORD) {
-		// Auto-generated in .env, so this is a warning not a blocker
+	const gc = state.globalConfig;
+
+	// Caddy's config is generated from the domain
+	if (allIds.includes('caddy') && !gc.domain) {
+		errors.push({
+			type: 'config',
+			message: 'Caddy is selected but no domain is configured',
+			serviceIds: ['caddy']
+		});
 	}
 
 	// Check base path is absolute
-	const gc = state.globalConfig;
 	if (gc.baseDir && !gc.baseDir.startsWith('/')) {
 		errors.push({
 			type: 'config',

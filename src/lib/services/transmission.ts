@@ -12,7 +12,8 @@ export const transmission: ServiceModule = {
 	networks: [],
 	ports: [
 		{ host: 9091, container: 9091 },
-		{ host: 51413, container: 51413 }
+		{ host: 51413, container: 51413 },
+		{ host: 51413, container: 51413, protocol: 'udp' }
 	],
 	environment: [
 		{ key: 'PUID', value: '${PUID}' },

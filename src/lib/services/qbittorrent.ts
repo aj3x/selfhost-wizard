@@ -12,7 +12,8 @@ export const qbittorrent: ServiceModule = {
 	networks: [],
 	ports: [
 		{ host: 8080, container: 8080 },
-		{ host: 6881, container: 6881 }
+		{ host: 6881, container: 6881 },
+		{ host: 6881, container: 6881, protocol: 'udp' }
 	],
 	environment: [
 		{ key: 'PUID', value: '${PUID}' },

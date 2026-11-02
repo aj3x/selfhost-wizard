@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+</script>
+
 <svelte:head>
 	<title>SelfHost Wizard — Should you self-host?</title>
 </svelte:head>
@@ -12,7 +16,7 @@
 	</p>
 
 	<a
-		href="/assess"
+		href={resolve('/assess')}
 		class="mb-12 inline-block rounded-xl bg-(--color-primary) px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-(--color-primary-hover)"
 	>
 		Start Assessment &rarr;
@@ -43,10 +47,10 @@
 	</div>
 
 	<div class="mt-8 flex flex-col items-center gap-2">
-		<a href="/configure" class="text-sm text-(--color-primary) hover:underline">
+		<a href={resolve('/configure')} class="text-sm text-(--color-primary) hover:underline">
 			Already know what you want? Jump to the Configurator &rarr;
 		</a>
-		<a href="/tools" class="text-sm text-(--color-text-muted) hover:underline">
+		<a href={resolve('/tools')} class="text-sm text-(--color-text-muted) hover:underline">
 			Just need a quick calculator? Try our standalone tools &rarr;
 		</a>
 	</div>

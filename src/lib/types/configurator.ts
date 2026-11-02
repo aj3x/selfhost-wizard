@@ -1,7 +1,7 @@
 // ── Streaming Bandwidth Constants ──
-/** Mbps required per 1080p stream */
-export const STREAM_1080P_MBPS = 8;
-/** Mbps required per 4K stream */
+/** Minimum upload Mbps per 1080p stream (H.264 direct play) */
+export const STREAM_1080P_MBPS = 10;
+/** Minimum upload Mbps per 4K stream (direct play, no transcode) */
 export const STREAM_4K_MBPS = 20;
 import type { SkillLevel } from './assessment';
 
@@ -123,6 +123,7 @@ export interface ComposeService {
 	cap_add?: string[];
 	devices?: string[];
 	hostname?: string;
+	extra_hosts?: string[];
 	healthcheck?: {
 		test: string[];
 		interval: string;
@@ -325,6 +326,14 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
 	vpnType: 'wireguard',
 	vpnCountry: '',
 	vpnEnv: {}
+};
+
+/** Secrets generated automatically for each service and written to .env */
+export const GENERATED_SECRETS: Record<string, string[]> = {
+	immich: ['IMMICH_DB_PASSWORD'],
+	nextcloud: ['NC_DB_PASSWORD'],
+	paperless: ['PAPERLESS_DB_PASSWORD'],
+	photoprism: ['PHOTOPRISM_ADMIN_PASSWORD']
 };
 
 // ── Presets ──

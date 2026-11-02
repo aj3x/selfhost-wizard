@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { CURRENCY_SYMBOLS, type Currency } from '$lib/types/assessment';
 	import { FACTORY_DEFAULTS } from '$lib/types/defaults';
 	import NumberInput from '$lib/components/wizard/NumberInput.svelte';
@@ -40,7 +41,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-2xl px-4 py-8">
-	<a href="/tools" class="mb-4 inline-block text-sm text-(--color-primary) hover:underline">&larr; All Tools</a>
+	<a href={resolve('/tools')} class="mb-4 inline-block text-sm text-(--color-primary) hover:underline">&larr; All Tools</a>
 	<h1 class="mb-2 text-2xl font-bold">Break-Even Calculator</h1>
 	<p class="mb-6 text-(--color-text-muted)">When does self-hosting pay for itself?</p>
 

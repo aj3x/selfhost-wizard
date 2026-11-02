@@ -13,36 +13,45 @@ export function calcMonthlySaasCost(state: AssessmentState): number {
 	return total;
 }
 
-/** Calculate monthly self-hosted operating cost */
-export function calcMonthlySelfHostedCost(
+export interface SelfHostedBreakdown {
+	electricity: number;
+	vpn: number;
+	domain: number;
+	offsite: number;
+	total: number;
+}
+
+/** Calculate monthly self-hosted operating cost, itemized */
+export function calcSelfHostedBreakdown(
 	state: AssessmentState,
 	electricityCost: number,
 	defaults: CalculationDefaults
-): number {
-	let total = electricityCost;
-
-	// VPN for torrenting (Mullvad or similar)
+): SelfHostedBreakdown {
+	// VPN for torrenting: an existing subscription keeps being paid, otherwise assume a new one
+	let vpn = 0;
 	if (state.wantsMedia && state.automationLevel !== 'manual') {
-		// Need a VPN if they don't already have one
-		if (!state.vpnService?.enabled) {
-			total += defaults.vpnMonthlyDefault;
-		}
+		vpn = state.vpnService?.enabled ? state.vpnService.monthlyCost : defaults.vpnMonthlyDefault;
 	}
 
 	// Domain cost (annualized)
-	if (state.wantsDomain) {
-		total += defaults.domainAnnualCost / 12;
-	}
+	const domain = state.wantsDomain ? defaults.domainAnnualCost / 12 : 0;
 
 	// Off-site backup
+	let offsite = 0;
 	if (state.wantsOffsiteBackup === 'cloud') {
 		// Rough estimate: critical data only (photos + files, not media)
 		let backupGB = 0;
 		if (state.photoBackupIntent !== 'no') backupGB += state.existingPhotoLibraryGB;
 		if (state.wantsFileSync) backupGB += state.computers.reduce((sum, c) => sum + c.sizeGB, 0);
 		const backupTB = Math.max(0.1, backupGB / 1000); // minimum 0.1 TB
-		total += backupTB * defaults.offsiteCostPerTbMonth;
+		offsite = backupTB * defaults.offsiteCostPerTbMonth;
 	}
 
-	return total;
+	return {
+		electricity: electricityCost,
+		vpn,
+		domain,
+		offsite,
+		total: electricityCost + vpn + domain + offsite
+	};
 }

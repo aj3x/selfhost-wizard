@@ -1,4 +1,4 @@
-import type { AssessmentState } from '$lib/types/assessment';
+import type { AssessmentState, ExistingDrive } from '$lib/types/assessment';
 import type { CalculationDefaults } from '$lib/types/defaults';
 
 export interface RiskAnalysis {
@@ -8,6 +8,17 @@ export interface RiskAnalysis {
 	expectedReplacementsPerYear: number;
 	annualizedReplacementCost: number;
 	riskLevel: 'low' | 'medium' | 'high' | 'very_high';
+}
+
+/** Annual failure rate for a drive, doubled once it's past its expected lifespan */
+function driveAfr(drive: ExistingDrive, defaults: CalculationDefaults): number {
+	const baseAfr =
+		drive.type === 'ssd'
+			? defaults.ssdAfr
+			: drive.isNASRated
+				? defaults.nasDriveAfr
+				: defaults.hddAfr;
+	return drive.ageYears > defaults.driveLifespanYears ? baseAfr * 2 : baseAfr;
 }
 
 export function analyzeRisk(
@@ -32,29 +43,18 @@ export function analyzeRisk(
 		};
 	}
 
-	// Calculate weighted AFR
-	let weightedAfr = 0;
-	for (const drive of existingDrives) {
-		const baseAfr =
-			drive.type === 'ssd'
-				? defaults.ssdAfr
-				: drive.isNASRated
-					? defaults.nasDriveAfr
-					: defaults.hddAfr;
-		// Older drives have higher failure rates
-		const ageFactor = drive.ageYears > defaults.driveLifespanYears ? 2 : 1;
-		weightedAfr += baseAfr * ageFactor;
-	}
-	// New drives at base rate
-	weightedAfr += additionalDrives * defaults.hddAfr;
-	const avgAfr = weightedAfr / totalDrives;
+	// Each drive fails independently at its own rate
+	const driveAfrs = [
+		...existingDrives.map((d) => driveAfr(d, defaults)),
+		...Array<number>(additionalDrives).fill(defaults.hddAfr)
+	];
 
 	// Probability of ANY failure
-	const annualFailureProbability = 1 - Math.pow(1 - avgAfr, totalDrives);
+	const annualFailureProbability = 1 - driveAfrs.reduce((p, afr) => p * (1 - afr), 1);
 	const fiveYearFailureProbability = 1 - Math.pow(1 - annualFailureProbability, 5);
 
 	// Expected replacements
-	const expectedReplacementsPerYear = totalDrives * avgAfr;
+	const expectedReplacementsPerYear = driveAfrs.reduce((sum, afr) => sum + afr, 0);
 
 	// Replacement cost (accounting for warranty)
 	const costPerDrive = defaults.hddPricePerTB * 8; // assume 8TB replacement
@@ -63,14 +63,8 @@ export function analyzeRisk(
 		const warrantyYears = drive.isNASRated
 			? defaults.nasWarrantyYears
 			: defaults.consumerWarrantyYears;
-		const afr =
-			drive.type === 'ssd'
-				? defaults.ssdAfr
-				: drive.isNASRated
-					? defaults.nasDriveAfr
-					: defaults.hddAfr;
 		if (drive.ageYears >= warrantyYears) {
-			annualizedReplacementCost += afr * costPerDrive;
+			annualizedReplacementCost += driveAfr(drive, defaults) * costPerDrive;
 		}
 		// Under warranty: $0 replacement
 	}

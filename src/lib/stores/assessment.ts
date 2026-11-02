@@ -5,16 +5,16 @@ import { type AssessmentState, DEFAULT_ASSESSMENT } from '$lib/types/assessment'
 const STORAGE_KEY = 'selfhost-assessment';
 
 function loadFromStorage(): AssessmentState {
-	if (!browser) return DEFAULT_ASSESSMENT;
+	if (!browser) return structuredClone(DEFAULT_ASSESSMENT);
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
 		if (stored) {
-			return { ...DEFAULT_ASSESSMENT, ...JSON.parse(stored) };
+			return { ...structuredClone(DEFAULT_ASSESSMENT), ...JSON.parse(stored) };
 		}
 	} catch {
 		// Ignore corrupt data
 	}
-	return DEFAULT_ASSESSMENT;
+	return structuredClone(DEFAULT_ASSESSMENT);
 }
 
 function createAssessmentStore() {
@@ -32,7 +32,7 @@ function createAssessmentStore() {
 		set,
 		update,
 		reset() {
-			set({ ...DEFAULT_ASSESSMENT });
+			set(structuredClone(DEFAULT_ASSESSMENT));
 		},
 		exportJSON(): string {
 			let current: AssessmentState = DEFAULT_ASSESSMENT;
@@ -42,7 +42,8 @@ function createAssessmentStore() {
 		importJSON(json: string) {
 			try {
 				const parsed = JSON.parse(json);
-				set({ ...DEFAULT_ASSESSMENT, ...parsed });
+				if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return false;
+				set({ ...structuredClone(DEFAULT_ASSESSMENT), ...parsed });
 				return true;
 			} catch {
 				return false;

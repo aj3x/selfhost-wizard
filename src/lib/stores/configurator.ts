@@ -1,23 +1,24 @@
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import {
 	type ConfiguratorState,
 	type GlobalConfig,
 	DEFAULT_CONFIGURATOR_STATE,
-	DEFAULT_GLOBAL_CONFIG
+	DEFAULT_GLOBAL_CONFIG,
+	GENERATED_SECRETS
 } from '$lib/types/configurator';
 import { autoResolveDependencies } from '$lib/calc/dependencies';
 
 const STORAGE_KEY = 'selfhost-configurator';
 
 function loadFromStorage(): ConfiguratorState {
-	if (!browser) return DEFAULT_CONFIGURATOR_STATE;
+	if (!browser) return structuredClone(DEFAULT_CONFIGURATOR_STATE);
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
 		if (stored) {
 			const parsed = JSON.parse(stored);
 			return {
-				...DEFAULT_CONFIGURATOR_STATE,
+				...structuredClone(DEFAULT_CONFIGURATOR_STATE),
 				...parsed,
 				globalConfig: { ...DEFAULT_GLOBAL_CONFIG, ...parsed.globalConfig }
 			};
@@ -25,16 +26,35 @@ function loadFromStorage(): ConfiguratorState {
 	} catch {
 		// Ignore corrupt data
 	}
-	return DEFAULT_CONFIGURATOR_STATE;
+	return structuredClone(DEFAULT_CONFIGURATOR_STATE);
 }
 
-/** Run auto-resolution and return updated state */
+/** Generate a random alphanumeric secret, using rejection sampling to avoid modulo bias */
+function generateSecret(length = 24): string {
+	const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+	const limit = 256 - (256 % chars.length);
+	let secret = '';
+	while (secret.length < length) {
+		for (const b of crypto.getRandomValues(new Uint8Array(length))) {
+			if (b < limit && secret.length < length) secret += chars[b % chars.length];
+		}
+	}
+	return secret;
+}
+
+/** Run auto-resolution, generate any missing secrets, and return updated state */
 function resolveState(state: ConfiguratorState): ConfiguratorState {
 	const added = autoResolveDependencies(
 		state.selectedServices,
 		state.dependencyChoices
 	);
-	return { ...state, resolvedDependencies: added };
+	const generatedSecrets = { ...state.generatedSecrets };
+	for (const id of [...state.selectedServices, ...added]) {
+		for (const key of GENERATED_SECRETS[id] ?? []) {
+			generatedSecrets[key] ||= generateSecret();
+		}
+	}
+	return { ...state, resolvedDependencies: added, generatedSecrets };
 }
 
 function createConfiguratorStore() {
@@ -53,40 +73,24 @@ function createConfiguratorStore() {
 
 	return {
 		subscribe,
-		set,
+		set(state: ConfiguratorState) {
+			set(resolveState(state));
+		},
 		update,
 
-		/** Toggle a service on or off */
+		/** Toggle a service on or off. Auto-added dependencies stay until their dependents go. */
 		toggleService(id: string) {
 			updateAndResolve((state) => {
 				const selected = new Set(state.selectedServices);
-				const resolved = new Set(state.resolvedDependencies);
 
 				if (selected.has(id)) {
 					selected.delete(id);
-				} else if (resolved.has(id)) {
-					resolved.delete(id);
-				} else {
+				} else if (!state.resolvedDependencies.includes(id)) {
 					selected.add(id);
 				}
 
-				return {
-					...state,
-					selectedServices: [...selected],
-					resolvedDependencies: [...resolved],
-					activePreset: null
-				};
+				return { ...state, selectedServices: [...selected], activePreset: null };
 			});
-		},
-
-		/** Set the full selection (e.g. from a preset) */
-		setSelection(ids: string[]) {
-			updateAndResolve((state) => ({
-				...state,
-				selectedServices: ids,
-				resolvedDependencies: [],
-				dependencyChoices: {}
-			}));
 		},
 
 		/** Apply a preset */
@@ -94,7 +98,6 @@ function createConfiguratorStore() {
 			updateAndResolve((state) => ({
 				...state,
 				selectedServices: serviceIds,
-				resolvedDependencies: [],
 				dependencyChoices: {},
 				activePreset: presetId
 			}));
@@ -135,31 +138,9 @@ function createConfiguratorStore() {
 			}));
 		},
 
-		/** Get or create a stable secret for a given key */
-		getOrCreateSecret(key: string): string {
-			const state = get({ subscribe });
-			if (state.generatedSecrets[key]) {
-				return state.generatedSecrets[key];
-			}
-			const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-			let password: string;
-			if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-				const array = new Uint8Array(24);
-				crypto.getRandomValues(array);
-				password = Array.from(array, (b) => chars[b % chars.length]).join('');
-			} else {
-				password = Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-			}
-			update((state) => ({
-				...state,
-				generatedSecrets: { ...state.generatedSecrets, [key]: password }
-			}));
-			return password;
-		},
-
 		/** Reset everything */
 		reset() {
-			set({ ...DEFAULT_CONFIGURATOR_STATE, globalConfig: { ...DEFAULT_GLOBAL_CONFIG } });
+			set(structuredClone(DEFAULT_CONFIGURATOR_STATE));
 		}
 	};
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { CURRENCY_SYMBOLS, LOCATIONS, type Currency } from '$lib/types/assessment';
 	import NumberInput from '$lib/components/wizard/NumberInput.svelte';
 	import SliderInput from '$lib/components/wizard/SliderInput.svelte';
@@ -28,7 +29,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-2xl px-4 py-8">
-	<a href="/tools" class="mb-4 inline-block text-sm text-(--color-primary) hover:underline">&larr; All Tools</a>
+	<a href={resolve('/tools')} class="mb-4 inline-block text-sm text-(--color-primary) hover:underline">&larr; All Tools</a>
 	<h1 class="mb-2 text-2xl font-bold">Electricity Cost Calculator</h1>
 	<p class="mb-6 text-(--color-text-muted)">How much will it cost to run your server?</p>
 
